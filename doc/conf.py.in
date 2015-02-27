@@ -1,0 +1,44 @@
+# -*- coding: utf-8 -*-
+
+import sphinx_bootstrap_theme
+
+project = 'trento'
+version = release = '@PROJECT_VERSION@'
+copyright = '2015 Jonah E. Bernhard, J. Scott Moreland'
+
+extensions = ['breathe', 'sphinx.ext.mathjax']
+breathe_projects = {project: '@CMAKE_CURRENT_BINARY_DIR@/doxyxml'}
+breathe_default_project = project
+breathe_implementation_filename_extensions = ['.cxx']
+breathe_default_members = ['members']
+
+source_suffix = '.rst'
+master_doc = 'index'
+templates_path = ['@CMAKE_CURRENT_SOURCE_DIR@/_templates']
+
+primary_domain = 'cpp'
+highlight_language = 'cpp'
+default_role = 'math'
+pygments_style = 'sphinx'
+
+html_domain_indices = False
+html_use_index = False
+html_static_path = ['@CMAKE_CURRENT_SOURCE_DIR@/_static']
+
+html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
+html_theme_options = dict(
+    navbar_title='trento',
+    navbar_site_name='Site',
+    navbar_pagenav_name='Page',
+    navbar_sidebarrel=True,
+    navbar_pagenav=True,
+    navbar_class='navbar',
+    navbar_fixed_top='true',
+    # navbar_links=[()],
+    globaltoc_depth=2,
+    globaltoc_includehidden='true',
+    source_link_position='footer',
+    bootswatch_theme='flatly',
+    bootstrap_version='3',
+)

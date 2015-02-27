@@ -64,3 +64,4 @@ set(LIBRARY_NAME "lib${PROJECT_NAME}")
 
 add_subdirectory(src)
 add_subdirectory(test)
+add_subdirectory(doc)
