@@ -7,6 +7,8 @@ if(NOT CXX11)
   message(FATAL_ERROR "Your compiler does not support C++11")
 endif()
 
+find_package(Boost REQUIRED COMPONENTS filesystem program_options system)
+
 set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
 set(PROJECT_VERSION_PATCH dev)

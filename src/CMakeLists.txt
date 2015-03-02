@@ -1,6 +1,7 @@
 # Compile everything except the main source file into a static lib to be linked
 # to both the main executable and the tests.
 add_library(${LIBRARY_NAME} STATIC
+  config.cxx
   nucleon.cxx
 )
 set_target_properties(${LIBRARY_NAME} PROPERTIES PREFIX "")
@@ -10,6 +11,6 @@ set(MAIN ${PROJECT_NAME}.cxx)
 set_source_files_properties(${MAIN} PROPERTIES
   COMPILE_DEFINITIONS "TRENTO_VERSION_STRING=\"${PROJECT_VERSION}\"")
 add_executable(${PROJECT_NAME} ${MAIN})
-target_link_libraries(${PROJECT_NAME} ${LIBRARY_NAME})
+target_link_libraries(${PROJECT_NAME} ${LIBRARY_NAME} ${Boost_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
