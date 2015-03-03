@@ -4,7 +4,7 @@ add_custom_target(tests)
 
 # Run the compiled executable normally and let the sanitizers do their thing.
 # Even if compiled without sanitizers, this won't hurt.
-add_custom_target(sanitizer COMMAND ${PROJECT_NAME})
+add_custom_target(sanitizer COMMAND ${PROJECT_NAME} p p 10 > /dev/null VERBATIM)
 add_dependencies(tests sanitizer)
 
 # Download the Catch test header automatically.
@@ -13,7 +13,7 @@ set(SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/download_catch.cmake")
 file(WRITE ${SCRIPT_FILE}
 "message(STATUS \"Downloading Catch test header\")
 
-file(DOWNLOAD 
+file(DOWNLOAD
   \"https://raw.github.com/philsquared/Catch/master/single_include/catch.hpp\"
   \"${CATCH_FILE}\"
   TIMEOUT 20
@@ -56,6 +56,7 @@ if(GCOVR)
     COMMAND ${GCOVR}
     --root=${CMAKE_SOURCE_DIR}
     --exclude=${CMAKE_CURRENT_SOURCE_DIR}
+    VERBATIM
     DEPENDS catch)
   add_dependencies(tests cov)
 endif()

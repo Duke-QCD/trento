@@ -7,10 +7,10 @@ if(DOXYGEN AND SPHINX)
   add_custom_target(doc
     COMMAND ${DOXYGEN}
       ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-    COMMAND ${SPHINX} 
-      -b html 
-      -c ${CMAKE_CURRENT_BINARY_DIR} 
-      ${CMAKE_CURRENT_SOURCE_DIR} 
+    COMMAND ${SPHINX}
+      -b html
+      -c ${CMAKE_CURRENT_BINARY_DIR}
+      ${CMAKE_CURRENT_SOURCE_DIR}
       ${CMAKE_CURRENT_BINARY_DIR}/html
   )
 endif()

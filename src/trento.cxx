@@ -47,6 +47,10 @@ void print_default_config() {
   std::cout << "to do\n";
 }
 
+class FileNotFoundError : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
 }  // unnamed namespace
 
 }  // namespace trento
@@ -56,14 +60,14 @@ int main(int argc, char* argv[]) {
 
   // Parse options with boost::program_options.
   // There are quite a few options, so let's separate them into logical groups.
-  using opt_desc = po::options_description;
+  using OptDesc = po::options_description;
 
-  using vec_str = std::vector<std::string>;
-  opt_desc main_opts{};
+  using VecStr = std::vector<std::string>;
+  OptDesc main_opts{};
   main_opts.add_options()
-    ("projectile", po::value<vec_str>()->required()->
+    ("projectile", po::value<VecStr>()->required()->
      notifier(  // use a lambda to verify there are exactly two projectiles
-         [](const vec_str& projectiles) {
+         [](const VecStr& projectiles) {
            if (projectiles.size() != 2)
             throw po::required_option{"projectile"};
            }),
@@ -77,24 +81,24 @@ int main(int argc, char* argv[]) {
     .add("projectile", 2)
     .add("number-events", 1);
 
-  using vec_path = std::vector<fs::path>;
-  opt_desc general_opts{"general options"};
+  using VecPath = std::vector<fs::path>;
+  OptDesc general_opts{"general options"};
   general_opts.add_options()
     ("help,h", "show this help message and exit")
     ("version", "print version information and exit")
     ("bibtex", "print bibtex entry and exit")
     ("default-config", "print a config file with default settings and exit")
-    ("config-file,c", po::value<vec_path>()->value_name("FILE"),
+    ("config-file,c", po::value<VecPath>()->value_name("FILE"),
      "configuration file, can be passed multiple times");
 
-  opt_desc output_opts{"output options"};
+  OptDesc output_opts{"output options"};
   output_opts.add_options()
     ("quiet,q", po::bool_switch(),
      "do not print event properties to stdout")
     ("output,o", po::value<fs::path>()->value_name("PATH"),
      "HDF5 file or directory for text files");
 
-  opt_desc phys_opts{"physical options"};
+  OptDesc phys_opts{"physical options"};
   phys_opts.add_options()
     ("reduced-thickness,p",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
@@ -121,7 +125,7 @@ int main(int argc, char* argv[]) {
      po::value<double>()->value_name("FLOAT")->default_value(-1., "auto"),
      "maximum impact parameter [fm]");
 
-  opt_desc grid_opts{"grid options"};
+  OptDesc grid_opts{"grid options"};
   grid_opts.add_options()
     ("grid-size",
      po::value<double>()->value_name("FLOAT")->default_value(10., "10.0"),
@@ -132,7 +136,7 @@ int main(int argc, char* argv[]) {
 
   // Make a meta-group containing all the option groups except the main
   // positional options (don't want the auto-generated usage info for those).
-  opt_desc usage_opts{};
+  OptDesc usage_opts{};
   usage_opts
     .add(general_opts)
     .add(output_opts)
@@ -149,7 +153,7 @@ int main(int argc, char* argv[]) {
 
   try {
     // Now make a meta-group containing _all_ options.
-    opt_desc all_opts{};
+    OptDesc all_opts{};
     all_opts
       .add(usage_opts)
       .add(main_opts);
@@ -181,17 +185,18 @@ int main(int argc, char* argv[]) {
     // Now merge any config files.
     if (var_map.count("config-file")) {
       // Everything except general_opts.
-      opt_desc config_file_opts{};
+      OptDesc config_file_opts{};
       config_file_opts
         .add(main_opts)
         .add(output_opts)
         .add(phys_opts)
         .add(grid_opts);
 
-      for (const auto &path : var_map["config-file"].as<vec_path>()) {
-        if (!fs::exists(path))
-          throw std::runtime_error{
+      for (const auto &path : var_map["config-file"].as<VecPath>()) {
+        if (!fs::exists(path)) {
+          throw FileNotFoundError{
             "configuration file '" + path.string() + "' not found"};
+        }
         fs::ifstream ifs{path};
         po::store(po::parse_config_file(ifs, config_file_opts), var_map);
       }
@@ -214,7 +219,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Testing, will be removed.
-  auto projectiles = var_map["projectile"].as<vec_str>();
+  auto projectiles = var_map["projectile"].as<VecStr>();
   std::cout
     << "projectiles   = "
     << projectiles[0] << ' '
