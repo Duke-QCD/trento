@@ -10,7 +10,7 @@
 namespace trento {
 
 /// Set runtime static member variables from user input.
-void set_static_vars(const po::variables_map&);
+void set_static_vars(const VarMap&);
 
 }  // namespace trento
 

@@ -20,4 +20,12 @@ class variables_map;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
+using VarMap = po::variables_map;
+
+namespace trento {
+
+class NucleusBase;
+
+}  // namespace trento
+
 #endif  // FWD_DECL_H

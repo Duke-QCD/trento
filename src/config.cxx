@@ -8,7 +8,7 @@
 
 namespace trento {
 
-void set_static_vars(const po::variables_map&) {
+void set_static_vars(const VarMap&) {
 }
 
 }  // namespace trento
