@@ -8,7 +8,12 @@
 
 using namespace trento;
 
+
 TEST_CASE( "Nucleons" ) {
-  Nucleon n;
+  Nucleon::set_width(0.5);
+  Nucleon::set_cross_sec(6.5);
+  Nucleon::set_fluct_shape(1.);
+
+  Nucleon n{};
   CHECK( 1 == 1 );
 }
