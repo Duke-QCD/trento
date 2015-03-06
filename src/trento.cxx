@@ -12,6 +12,7 @@
 #include <boost/program_options.hpp>
 
 #include "config.h"
+#include "event.h"
 #include "fwd_decl.h"
 
 // CMake sets this definition.
@@ -47,10 +48,6 @@ void print_default_config() {
   std::cout << "to do\n";
 }
 
-class FileNotFoundError : public std::runtime_error {
-  using std::runtime_error::runtime_error;
-};
-
 }  // unnamed namespace
 
 }  // namespace trento
@@ -62,6 +59,9 @@ int main(int argc, char* argv[]) {
   // There are quite a few options, so let's separate them into logical groups.
   using OptDesc = po::options_description;
 
+  // Will be set by program_options.
+  std::size_t number_events;
+
   using VecStr = std::vector<std::string>;
   OptDesc main_opts{};
   main_opts.add_options()
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
             throw po::required_option{"projectile"};
            }),
      "projectile symbols")
-    ("number-events", po::value<std::size_t>()->default_value(1),
+    ("number-events", po::value<std::size_t>(&number_events)->default_value(1),
      "number of events");
 
   // Make all main arguments positional.
@@ -134,25 +134,25 @@ int main(int argc, char* argv[]) {
      po::value<double>()->value_name("FLOAT")->default_value(.1, "0.1"),
      "grid step size [fm]");
 
-  // Make a meta-group containing all the option groups except the main
-  // positional options (don't want the auto-generated usage info for those).
-  OptDesc usage_opts{};
-  usage_opts
-    .add(general_opts)
-    .add(output_opts)
-    .add(phys_opts)
-    .add(grid_opts);
-
   // Will be used several times.
   const std::string usage_str{
     "usage: trento [options] projectile projectile [number-events = 1]\n"};
 
   // Initialize this before the try...catch block so it stays in scope
   // afterwards.
-  po::variables_map var_map;
+  VarMap var_map;
 
   try {
-    // Now make a meta-group containing _all_ options.
+    // Make a meta-group containing all the option groups except the main
+    // positional options (don't want the auto-generated usage info for those).
+    OptDesc usage_opts{};
+    usage_opts
+      .add(general_opts)
+      .add(output_opts)
+      .add(phys_opts)
+      .add(grid_opts);
+
+    // Now a meta-group containing _all_ options.
     OptDesc all_opts{};
     all_opts
       .add(usage_opts)
@@ -165,8 +165,13 @@ int main(int argc, char* argv[]) {
     // Handle options that imply immediate exit.
     // Must do this _before_ po::notify() since that can throw exceptions.
     if (var_map.count("help")) {
-      std::cout << usage_str << usage_opts << "\n"
-          "see the online documentation for complete usage information\n";
+      std::cout
+        << usage_str
+        << "\n"
+           "projectile = { p | Pb }\n"
+        << usage_opts
+        << "\n"
+           "see the online documentation for complete usage information\n";
       return 0;
     }
     if (var_map.count("version")) {
@@ -182,7 +187,7 @@ int main(int argc, char* argv[]) {
       return 0;
     }
 
-    // Now merge any config files.
+    // Merge any config files.
     if (var_map.count("config-file")) {
       // Everything except general_opts.
       OptDesc config_file_opts{};
@@ -194,7 +199,7 @@ int main(int argc, char* argv[]) {
 
       for (const auto &path : var_map["config-file"].as<VecPath>()) {
         if (!fs::exists(path)) {
-          throw FileNotFoundError{
+          throw po::error{
             "configuration file '" + path.string() + "' not found"};
         }
         fs::ifstream ifs{path};
@@ -202,7 +207,7 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    // Now save all the final values into var_map.
+    // Save all the final values into var_map.
     // Exceptions may occur here.
     po::notify(var_map);
   }
@@ -218,34 +223,19 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Testing, will be removed.
-  auto projectiles = var_map["projectile"].as<VecStr>();
-  std::cout
-    << "projectiles   = "
-    << projectiles[0] << ' '
-    << projectiles[1] << '\n'
-    << "number events = " << var_map["number-events"].as<std::size_t>() << '\n'
-    << '\n'
-    << "quiet = " << std::boolalpha << var_map["quiet"].as<bool>() << '\n';
-
-  if (var_map.count("output"))
-    std::cout << "output = " << var_map["output"].as<fs::path>() << '\n';
-
-  std::cout << '\n';
-
-  for (const auto& opt : phys_opts.options()) {
-    auto key = opt->key("*");
-    std::cout << key << " = " << var_map[key].as<double>() << '\n';
-  }
-
-  std::cout << '\n';
-
-  for (const auto& opt : grid_opts.options()) {
-    auto key = opt->key("*");
-    std::cout << key << " = " << var_map[key].as<double>() << '\n';
-  }
-
   set_static_vars(var_map);
+
+  try {
+    Event event(var_map);
+
+    for (std::size_t i = 0; i < number_events; ++i) {
+      event.collide();
+    }
+  }
+  catch (const std::exception& e) {
+    std::cerr << e.what() << '\n';
+    return 1;
+  }
 
   return 0;
 }

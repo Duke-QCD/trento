@@ -4,7 +4,7 @@ add_custom_target(tests)
 
 # Run the compiled executable normally and let the sanitizers do their thing.
 # Even if compiled without sanitizers, this won't hurt.
-add_custom_target(sanitizer COMMAND ${PROJECT_NAME} p p 10 > /dev/null VERBATIM)
+add_custom_target(sanitizer COMMAND ${PROJECT_NAME} p Pb 10 > /dev/null VERBATIM)
 add_dependencies(tests sanitizer)
 
 # Download the Catch test header automatically.
