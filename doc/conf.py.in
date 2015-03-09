@@ -4,7 +4,7 @@ import sphinx_bootstrap_theme
 
 project = 'trento'
 version = release = '@PROJECT_VERSION@'
-copyright = '2015 Jonah E. Bernhard, J. Scott Moreland'
+copyright = '2015 Jonah E. Bernhard, J. Scott Moreland, Steffen A. Bass'
 
 extensions = ['breathe', 'sphinx.ext.mathjax']
 breathe_projects = {project: '@CMAKE_CURRENT_BINARY_DIR@/doxyxml'}
