@@ -4,5 +4,9 @@
 
 #include "random.h"
 
+namespace trento { namespace random {
+
 // Seed random number generator from hardware device.
-std::mt19937_64 trento::random_engine{std::random_device{}()};
+Engine engine{std::random_device{}()};
+
+}}  // namespace trento::random
