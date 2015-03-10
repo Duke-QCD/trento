@@ -41,9 +41,10 @@ set(TEST_EXE "test-${PROJECT_NAME}")
 add_executable(${TEST_EXE} EXCLUDE_FROM_ALL
   catch.hpp
   catch.cxx
+  util.cxx
   test_nucleon.cxx
 )
-target_link_libraries(${TEST_EXE} ${LIBRARY_NAME})
+target_link_libraries(${TEST_EXE} ${LIBRARY_NAME} ${Boost_LIBRARIES})
 
 # Add a target to actually run the tests.
 add_custom_target(catch COMMAND ${TEST_EXE})
