@@ -10,13 +10,9 @@
 #include <string>
 #include <utility>
 
-#include "nucleon.h"
-
 namespace trento {
 
 namespace {
-
-using TransverseCoord = std::array<double, 2>;
 
 // Nucleon sampling policies.
 
@@ -75,7 +71,7 @@ void Nucleus<A, NucleonSampler>::sample_nucleons(double offset) {
   for (auto& nucleon : nucleons_) {
     auto coord = nucleon_sampler_.sample();
     std::get<0>(coord) -= offset;
-    nucleon.set_position(std::get<0>(coord), std::get<1>(coord));
+    nucleon = coord;
   }
 }
 

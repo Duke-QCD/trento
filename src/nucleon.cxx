@@ -5,103 +5,86 @@
 #include "nucleon.h"
 
 #include <cmath>
+#include <limits>
+#include <random>
+#include <stdexcept>
 
-#include "random.h"
+#include <boost/math/constants/constants.hpp>
+#include <boost/math/special_functions/expint.hpp>
+#include <boost/math/tools/roots.hpp>
+#include <boost/program_options/variables_map.hpp>
+
+#include "fwd_decl.h"
 
 namespace trento {
 
-Nucleon::Nucleon() : x_(0.), y_(0.), fluct_(0.), participant_(false) {}
+namespace {
 
-void Nucleon::set_width(double width) {
-  width_squared_ = width*width;
-  trunc_distance_squared_ = std::pow(trunc_widths_ * width, 2);
+// Create ctor parameters for unit mean std::gamma_distribution.
+//   mean = alpha*beta == 1  ->  beta = 1/alpha
+// Used below in Nucleon ctor initializer list.
+
+template<typename RealType> using param_type =
+  typename std::gamma_distribution<RealType>::param_type;
+
+template <typename RealType>
+param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
+  return param_type<RealType>{alpha, 1./alpha};
 }
 
-void Nucleon::set_cross_sec(double cross_sec) {
-  sigma_gg_ = .5*cross_sec/width_squared_ - 0.577216;
-}
+}  // unnamed namespace
 
-void Nucleon::set_fluct_shape(double fluct_shape) {
-  fluct_dist_.param(
-    std::gamma_distribution<double>::param_type{fluct_shape, 1./fluct_shape});
-}
 
-double Nucleon::radius() {
-  return trunc_widths_ * std::sqrt(width_squared_);
-}
+/// \b TODO Derive the cross section parameter.
+Nucleon::Nucleon(const VarMap& var_map)
+    : width_squared_(std::pow(var_map["nucleon-width"].as<double>(), 2)),
+      trunc_radius_squared_(std::pow(trunc_widths_, 2) * width_squared_),
+      fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())) {
+  // Determine cross section.
+  auto sigma_nn = var_map["cross-section"].as<double>();
+  if (sigma_nn < 0.) {
+    // TODO: automatically set from beam energy
+    // auto sqrt_s = var_map["beam-energy"].as<double>();
+    sigma_nn = 6.4;
+  }
 
-void Nucleon::set_position(double x, double y) {
-  x_ = x;
-  y_ = y;
-  participant_ = false;
-}
+  // Initialize arguments for boost root finding function.
 
-double Nucleon::thickness(double x, double y) const {
-  x -= x_;
-  y -= y_;
+  // Bracket min and max.
+  auto a = -10.;
+  auto b = 20.;
 
-  auto distance_squared = x*x + y*y;
-  if (distance_squared > trunc_distance_squared_)
-    return 0.;
+  // Tolerance function.
+  // Require 3/4 of double precision.
+  math::tools::eps_tolerance<double> tol{
+    (std::numeric_limits<double>::digits * 3) / 4};
 
-  return fluct_ / width_squared_ *
-         std::exp(-.5*distance_squared/width_squared_);
-}
+  // Maximum iterations.
+  // This is overkill -- in testing only 10-20 iterations were required
+  // (but no harm in overestimating).
+  boost::uintmax_t max_iter = 1000;
 
-bool Nucleon::is_participant() const {
-  return participant_;
-}
+  // Cache some quantities.
+  auto snn_div_four_pi_wsq = .5 * math::constants::one_div_two_pi<double>() *
+                             sigma_nn / width_squared_;
+  auto t = trunc_widths_ * trunc_widths_;  // for lack of a better name
 
-void Nucleon::set_participant() {
-  participant_ = true;
-  fluct_ = fluct_dist_(random_engine);
-}
+  try {
+    auto result = math::tools::toms748_solve(
+      [&snn_div_four_pi_wsq, &t](double x) {
+        using std::exp;
+        using math::expint;
+        return t - expint(-exp(x)) + expint(-exp(x-t)) - snn_div_four_pi_wsq;
+      },
+      a, b, tol, max_iter);
 
-void Nucleon::participate_with(Nucleon& other) {
-  auto dx = x_ - other.x_;
-  auto dy = y_ - other.y_;
-  auto distance_squared = dx*dx + dy*dy;
-
-  auto prob = participation_prob(distance_squared);
-
-  // If the probability is zero (less than epsilon), the first condition will
-  // fail and no time will be wasted generating a random number.
-  if (prob > 1e-12 && prob > unif_dist_(random_engine)) {
-    // Participation is commutative.
-    set_participant();
-    other.set_participant();
+    cross_sec_param_ = .5*(result.first + result.second);
+  }
+  catch (const std::domain_error&) {
+    // Root finding fails for very small nucleon widths, w^2/sigma_nn < ~0.01.
+    throw std::domain_error{
+      "unable to fit cross section -- nucleon width too small?"};
   }
 }
-
-/// \f$ P(b) = 1 - \exp(-\sigma_{gg} \int dx \, dy \, T_A T_B) \f$
-double Nucleon::participation_prob(double distance_squared) {
-  if (distance_squared > 4.*trunc_distance_squared_) {
-    return 0.;
-  }
-  else {
-    return -std::expm1(
-        -std::exp(sigma_gg_ - .25*distance_squared/width_squared_));
-  }
-}
-
-double Nucleon::sigma_nn() {
-  auto nsteps = 1000;
-  auto db = 2.*std::sqrt(trunc_distance_squared_)/(nsteps - 1);
-
-  auto sigma_nn = 0.;
-  for (auto i = 0; i < nsteps; ++i) {
-    auto b = (i+.5)*db;
-    sigma_nn += b*participation_prob(b*b);
-  }
-  sigma_nn *= 2.*M_PI*db;
-
-  return sigma_nn;
-}
-
-double Nucleon::width_squared_ = 1.;
-double Nucleon::trunc_distance_squared_ = 1.;
-double Nucleon::sigma_gg_ = 1.;
-std::gamma_distribution<double> Nucleon::fluct_dist_{1., 1.};
-std::uniform_real_distribution<double> Nucleon::unif_dist_{0., 1.};
 
 }  // namespace trento

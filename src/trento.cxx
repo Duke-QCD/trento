@@ -11,7 +11,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/program_options.hpp>
 
-#include "config.h"
 #include "event.h"
 #include "fwd_decl.h"
 
@@ -222,8 +221,6 @@ int main(int argc, char* argv[]) {
     std::cerr << e.what() << '\n';
     return 1;
   }
-
-  set_static_vars(var_map);
 
   try {
     Event event(var_map);

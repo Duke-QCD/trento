@@ -7,10 +7,11 @@
 
 #include <array>
 
-#include "nucleon.h"
 #include "nucleus_base.h"
 
 namespace trento {
+
+using TransverseCoord = std::array<double, 2>;
 
 ///
 template <std::size_t A, typename NucleonSampler>
@@ -28,7 +29,7 @@ class Nucleus : public NucleusBase {
   virtual void sample_nucleons(double offset) override;
 
   ///
-  std::array<Nucleon, A> nucleons_;
+  std::array<TransverseCoord, A> nucleons_;
 
   ///
   NucleonSampler nucleon_sampler_;

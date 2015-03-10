@@ -11,6 +11,8 @@ namespace boost {
 
 namespace filesystem {}
 
+namespace math {}
+
 namespace program_options {
 class variables_map;
 }
@@ -19,6 +21,7 @@ class variables_map;
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
+namespace math = boost::math;
 
 using VarMap = po::variables_map;
 

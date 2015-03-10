@@ -5,72 +5,83 @@
 #ifndef NUCLEON_H
 #define NUCLEON_H
 
-#include <random>
+#include "fwd_decl.h"
+#include "random.h"
 
 namespace trento {
 
 /// Nucleon class.
 class Nucleon {
  public:
-  /// Default constructor.
-  Nucleon();
-
+  /// \brief Initialize nucleon profile parameters, in particular determine
+  /// \c cross_sec_param_.
   ///
-  static void set_width(double width);
-  static void set_cross_sec(double cross_sec);
-  static void set_fluct_shape(double fluct_shape);
+  /// \param var_map Must contain keys
+  /// \c "nucleon-width",
+  /// \c "fluctation",
+  /// \c "beam-energy",
+  /// \c "cross-section".
+  explicit Nucleon(const VarMap& var_map);
 
-  static double radius();
+  /// The radius at which the nucleon profile is truncated.
+  double radius() const;
 
-  ///
-  void set_position(double x, double y);
+  /// Sample a random nucleon fluctuation.
+  double fluctuate() const;
 
-  ///
-  void participate_with(Nucleon& other);
+  /// Calculate the thickness function.
+  double thickness(double distance_squared) const;
 
-  ///
-  double thickness(double x, double y) const;
-
-  ///
-  bool is_participant() const;
+  /// Randomly determine nucleon-nucleon participation.
+  bool participate(double b_squared) const;
 
  private:
-  ///
-  static double participation_prob(double distance_squared);
-
-  ///
-  static double sigma_nn();
-
-  /// Truncate the thickness function at this number of nucleon widths.
+  /// Truncate the Gaussian at this number of widths.
   static constexpr double trunc_widths_ = 3.;
 
   /// Width of Gaussian thickness function.
-  static double width_squared_;
+  const double width_squared_;
 
-  ///
-  static double trunc_distance_squared_;
+  /// Truncate the Gaussian at this radius.
+  const double trunc_radius_squared_;
 
-  ///
-  static double sigma_gg_;
+  /// Dimensionless parameter set to reproduce the inelastic nucleon-nucleon
+  /// cross section \f$\sigma_{NN}\f$.  Calculated in constructor.
+  double cross_sec_param_;
 
-  ///
-  static std::gamma_distribution<double> fluct_dist_;
-
-  ///
-  static std::uniform_real_distribution<double> unif_dist_;
-
-  ///
-  void set_participant();
-
-  ///
-  double x_, y_;
-
-  ///
-  double fluct_;
-
-  ///
-  bool participant_;
+  /// Fluctuation distribution.
+  // mutable so that fluctuate() can be const
+  mutable std::gamma_distribution<double> fluct_dist_;
 };
+
+inline double Nucleon::radius() const {
+  return std::sqrt(trunc_radius_squared_);
+}
+
+inline double Nucleon::fluctuate() const {
+  return fluct_dist_(random::engine);
+}
+
+inline double Nucleon::thickness(double distance_squared) const {
+  if (distance_squared > trunc_radius_squared_)
+    return 0.;
+
+  return 1./width_squared_ * std::exp(-.5*distance_squared/width_squared_);
+}
+
+inline bool Nucleon::participate(double b_squared) const {
+  if (b_squared > 4.*trunc_radius_squared_)
+    return false;
+
+  // The probability is
+  //   P = 1 - exp(...)
+  // which can be calculated using std::expm1
+  //   expm1() = exp() - 1 = -(1 - exp())
+  auto prob = -std::expm1(
+      -std::exp(cross_sec_param_ - .25*b_squared/width_squared_));
+
+  return prob > random::canonical<>();
+}
 
 }  // namespace trento
 
