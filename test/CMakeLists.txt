@@ -43,6 +43,7 @@ add_executable(${TEST_EXE} EXCLUDE_FROM_ALL
   catch.cxx
   util.cxx
   test_nucleon.cxx
+  test_nucleus.cxx
 )
 target_link_libraries(${TEST_EXE} ${LIBRARY_NAME} ${Boost_LIBRARIES})
 
@@ -57,6 +58,7 @@ if(GCOVR)
     COMMAND ${GCOVR}
     --root=${CMAKE_SOURCE_DIR}
     --exclude=${CMAKE_CURRENT_SOURCE_DIR}
+    --exclude=${CMAKE_SOURCE_DIR}/src/${PROJECT_NAME}.cxx
     VERBATIM
     DEPENDS catch)
   add_dependencies(tests cov)

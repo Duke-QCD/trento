@@ -10,7 +10,7 @@
 #include <boost/program_options/variables_map.hpp>
 
 #include "fwd_decl.h"
-#include "nucleus_base.h"
+#include "nucleus.h"
 
 namespace trento {
 

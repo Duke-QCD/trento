@@ -5,14 +5,21 @@
 #include "nucleus.h"
 
 #include <array>
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
+#include <boost/math/constants/constants.hpp>
+
+#include "random.h"
+
 namespace trento {
 
 namespace {
+
+using Coord = NucleusBase::TransverseCoord;
 
 // Nucleon sampling policies.
 
@@ -21,16 +28,13 @@ namespace {
 class FixedSampler {
  public:
   ///
-  FixedSampler() : x_(0.), y_(0.) {}
+  constexpr FixedSampler() = default;
 
   ///
-  TransverseCoord sample() const {
-    return {x_, y_};
-  }
+  constexpr double radius() const noexcept { return 0.; };
 
- private:
   ///
-  const double x_, y_;
+  constexpr Coord sample() const noexcept { return {0., 0.}; }
 };
 
 /// Samples nucleons from a spherically symmetric Woods-Saxon distribution.
@@ -38,17 +42,41 @@ class FixedSampler {
 class WoodsSaxonSampler {
  public:
   ///
-  WoodsSaxonSampler(double R, double a) : R_(R), a_(a) {}
+  WoodsSaxonSampler(double R, double a);
 
   ///
-  TransverseCoord sample() const {
-    return {.5*R_, .5*R_};
-  }
+  double radius() const { return R_ + 3.*a_; };
+
+  ///
+  Coord sample() const;
 
  private:
   ///
-  double R_, a_;
+  const double R_, a_;
+
+  ///
+  mutable std::piecewise_linear_distribution<double> woods_saxon_dist_;
 };
+
+/// Extend Woods-Saxon distribution out to R + 10a.
+/// For typical values of (R, a), the probability of sampling a nucleon beyond
+/// this radius is O(10^-5).
+WoodsSaxonSampler::WoodsSaxonSampler(double R, double a)
+    : R_(R),
+      a_(a),
+      woods_saxon_dist_(1000, 0., R + 10.*a,
+        [&R, &a](double r) { return r*r/(1.+std::exp((r-R)/a)); })
+  {}
+
+Coord WoodsSaxonSampler::sample() const {
+  auto r = woods_saxon_dist_(random::engine);
+  auto cos_theta = 2. * random::canonical<>() - 1.;
+  auto phi = math::double_constants::two_pi * random::canonical<>();
+
+  auto r_sin_theta = r * std::sqrt(1. - cos_theta*cos_theta);
+
+  return {r_sin_theta*std::cos(phi), r_sin_theta*std::sin(phi)};
+}
 
 }  // unnamed namespace
 
@@ -71,14 +99,8 @@ void Nucleus<A, NucleonSampler>::sample_nucleons(double offset) {
   for (auto& nucleon : nucleons_) {
     auto coord = nucleon_sampler_.sample();
     std::get<0>(coord) -= offset;
-    nucleon = coord;
+    nucleon = {std::move(coord), false};
   }
 }
-
-// NucleonSampler policies
-
-// FixedSampler::FixedSampler() : x_(0.), y_(0.) {}
-
-// WoodsSaxonSampler::WoodsSaxonSampler(double R, double a) : R_(R), a_(a) {}
 
 }  // namespace trento
