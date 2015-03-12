@@ -19,8 +19,6 @@ namespace trento {
 
 namespace {
 
-using Coord = NucleusBase::TransverseCoord;
-
 // Nucleon sampling policies.
 
 /// Trivial sampler that always returns the same position.
@@ -34,7 +32,7 @@ class FixedSampler {
   constexpr double radius() const noexcept { return 0.; };
 
   ///
-  constexpr Coord sample() const noexcept { return {0., 0.}; }
+  constexpr std::array<double, 2> sample() const noexcept { return {0., 0.}; }
 };
 
 /// Samples nucleons from a spherically symmetric Woods-Saxon distribution.
@@ -48,7 +46,7 @@ class WoodsSaxonSampler {
   double radius() const { return R_ + 3.*a_; };
 
   ///
-  Coord sample() const;
+  std::array<double, 2> sample() const;
 
  private:
   ///
@@ -68,7 +66,7 @@ WoodsSaxonSampler::WoodsSaxonSampler(double R, double a)
         [&R, &a](double r) { return r*r/(1.+std::exp((r-R)/a)); })
   {}
 
-Coord WoodsSaxonSampler::sample() const {
+std::array<double, 2> WoodsSaxonSampler::sample() const {
   auto r = woods_saxon_dist_(random::engine);
   auto cos_theta = 2. * random::canonical<>() - 1.;
   auto phi = math::double_constants::two_pi * random::canonical<>();
@@ -96,10 +94,10 @@ Nucleus<A, NucleonSampler>::Nucleus(SamplerArgs&&... sampler_args)
 
 template <std::size_t A, typename NucleonSampler>
 void Nucleus<A, NucleonSampler>::sample_nucleons(double offset) {
-  for (auto& nucleon : nucleons_) {
+  for (auto&& nucleon_data : nucleon_data_array_) {
     auto coord = nucleon_sampler_.sample();
     std::get<0>(coord) -= offset;
-    nucleon = {std::move(coord), false};
+    nucleon_data.set_position(coord);
   }
 }
 

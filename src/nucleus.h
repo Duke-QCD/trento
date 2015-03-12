@@ -8,11 +8,45 @@
 #include <array>
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "fwd_decl.h"
 
 namespace trento {
+
+///
+class NucleonData {
+ public:
+  ///
+  NucleonData() = default;
+
+  /// Disable all copy and move operations.
+  NucleonData(const NucleonData&) = delete;
+  NucleonData& operator=(const NucleonData&) = delete;
+  NucleonData(NucleonData&&) = delete;
+  NucleonData& operator=(NucleonData&&) = delete;
+
+  ///
+  const std::array<double, 2>& position() const { return position_; }
+
+  ///
+  void set_position(const std::array<double, 2>& new_position) {
+    position_ = new_position;
+    participant_ = false;
+  }
+
+  ///
+  bool is_participant() const { return participant_; }
+
+  ///
+  void set_participant() { participant_ = true; }
+
+ private:
+  ///
+  std::array<double, 2> position_;
+
+  ///
+  bool participant_ = false;
+};
 
 ///
 using NucleusPtr = std::unique_ptr<NucleusBase>;
@@ -29,14 +63,13 @@ class NucleusBase {
   ///
   virtual double radius() const = 0;
 
-  using TransverseCoord = std::array<double, 2>;
-  using NucleonAttr = std::pair<TransverseCoord, bool>;
-
+  ///
   template <std::size_t A>
-  using NucleonArray = std::array<NucleonAttr, A>;
+  using NucleonDataArray = std::array<NucleonData, A>;
 
-  using iterator = NucleonArray<1>::iterator;
-  using const_iterator = NucleonArray<1>::const_iterator;
+  ///
+  using iterator = NucleonDataArray<1>::iterator;
+  using const_iterator = NucleonDataArray<1>::const_iterator;
 
   virtual iterator begin() noexcept = 0;
   virtual const_iterator cbegin() const noexcept = 0;
@@ -62,16 +95,16 @@ class Nucleus : public NucleusBase {
   { return nucleon_sampler_.radius(); }
 
   virtual iterator begin() noexcept override
-  { return nucleons_.begin(); }
+  { return nucleon_data_array_.begin(); }
 
   virtual const_iterator cbegin() const noexcept override
-  { return nucleons_.cbegin(); }
+  { return nucleon_data_array_.cbegin(); }
 
   virtual iterator end() noexcept override
-  { return nucleons_.end(); }
+  { return nucleon_data_array_.end(); }
 
   virtual const_iterator cend() const noexcept override
-  { return nucleons_.cend(); }
+  { return nucleon_data_array_.cend(); }
 
  private:
   ///
@@ -83,7 +116,7 @@ class Nucleus : public NucleusBase {
   Nucleus(SamplerArgs&&... sampler_args);
 
   ///
-  NucleonArray<A> nucleons_;
+  NucleonDataArray<A> nucleon_data_array_;
 
   ///
   NucleonSampler nucleon_sampler_;
