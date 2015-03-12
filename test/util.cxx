@@ -6,7 +6,7 @@
 
 VarMap make_var_map(std::map<std::string, boost::any>&& args) {
   VarMap var_map{};
-  for (const auto a : args)
+  for (auto&& a : args)
     var_map.emplace(a.first, po::variable_value{a.second, false});
   return var_map;
 }

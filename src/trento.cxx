@@ -196,7 +196,7 @@ int main(int argc, char* argv[]) {
         .add(phys_opts)
         .add(grid_opts);
 
-      for (const auto &path : var_map["config-file"].as<VecPath>()) {
+      for (const auto& path : var_map["config-file"].as<VecPath>()) {
         if (!fs::exists(path)) {
           throw po::error{
             "configuration file '" + path.string() + "' not found"};

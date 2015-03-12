@@ -14,8 +14,7 @@
 
 using namespace trento;
 
-TEST_CASE( "nucleon properties",
-           "[nucleon][thickness][cross-section][fluctuations]" ) {
+TEST_CASE( "nucleon properties" ) {
   auto fluct = 1. + .5*random::canonical<>();
   auto xsec = 4. + 3.*random::canonical<>();
   auto width = .5 + .2*random::canonical<>();
@@ -68,14 +67,12 @@ TEST_CASE( "nucleon properties",
 
   auto mean = total/n;
   CHECK( mean == Approx(1.).epsilon(.001) );
-}
 
-TEST_CASE( "exception when nucleon width too small",
-           "[nucleon][exception]" ) {
-  auto var_map = make_var_map({
+  // nucleon width too small
+  auto bad_var_map = make_var_map({
       {"fluctuation",   1.},
       {"cross-section", 5.},
       {"nucleon-width", .1},
   });
-  CHECK_THROWS_AS( Nucleon nucleon{var_map}, std::domain_error );
+  CHECK_THROWS_AS( Nucleon nucleon{bad_var_map}, std::domain_error );
 }
