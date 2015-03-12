@@ -8,81 +8,148 @@
 #include <cmath>
 #include <iterator>
 #include <map>
-#include <sstream>
 
 #include "catch.hpp"
 
+#include "../src/random.h"
+
 using namespace trento;
 
-TEST_CASE( "nucleus" ) {
+TEST_CASE( "nucleon data" ) {
 
-  SECTION( "proton" ) {
+  NucleonData nucleon_data{};
 
-    auto nucleus = NucleusBase::create("p");
+  // should not be a participant initially
+  CHECK( !nucleon_data.is_participant() );
 
-    CHECK( std::distance(nucleus->begin(), nucleus->end()) == 1 );
-    CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == 1 );
+  // set and retrieve position
+  nucleon_data.set_position({1, 2});
+  std::array<double, 2> correct_position{1, 2};
+  CHECK( nucleon_data.position() == correct_position );
 
-    CHECK( nucleus->radius() == 0. );
+  // should still not be a participant
+  CHECK( !nucleon_data.is_participant() );
 
+  // set and retrieve participant
+  nucleon_data.set_participant();
+  CHECK( nucleon_data.is_participant() );
+
+  // setting new position resets participant
+  nucleon_data.set_position({3, 4});
+  CHECK( !nucleon_data.is_participant() );
+
+}
+
+TEST_CASE( "proton" ) {
+
+  auto nucleus = NucleusBase::create("p");
+
+  // contains one nucleon
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == 1 );
+  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == 1 );
+
+  CHECK( nucleus->radius() == 0. );
+
+  double offset = random::canonical<>();
+  nucleus->sample_nucleons(offset);
+
+  auto&& proton = *(nucleus->begin());
+  std::array<double, 2> correct_position{-offset, 0.};
+
+  CHECK( proton.position() == correct_position );
+  CHECK( !proton.is_participant() );
+
+}
+
+TEST_CASE( "lead nucleus" ) {
+
+  auto nucleus = NucleusBase::create("Pb");
+
+  constexpr auto A = 208;
+
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
+  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
+
+  CHECK( nucleus->radius() > 6. );
+
+  double offset = nucleus->radius() * random::canonical<>();
+  nucleus->sample_nucleons(offset);
+
+  // average nucleon position
+  double x = 0., y = 0.;
+  for (const auto& nucleon : *nucleus) {
+    auto coord = nucleon.position();
+    x += std::get<0>(coord);
+    y += std::get<1>(coord);
+  }
+  x /= A;
+  y /= A;
+  auto tolerance = .6;
+  CHECK( std::abs(x + offset) < tolerance );
+  CHECK( std::abs(y) < tolerance );
+
+  // no initial participants
+  bool initial_participants = std::any_of(
+      nucleus->cbegin(), nucleus->cend(),
+      [](const NucleonData& n) { return n.is_participant(); });
+  CHECK( !initial_participants );
+
+  // sample a bunch of nuclei and bin all the nucleon positions
+  // using "p" for cylindrical radius to distinguish from spherical "r"
+  constexpr auto dp = .2;
+  std::map<int, int> hist{};
+  for (auto i = 0; i < 5000; ++i) {
     nucleus->sample_nucleons(0.);
-
-    auto proton = *(nucleus->begin());
-    auto coord = std::get<0>(proton);
-    auto part = std::get<1>(proton);
-    auto x = std::get<0>(coord);
-    auto y = std::get<1>(coord);
-
-    CHECK( x == 0. );
-    CHECK( y == 0. );
-    CHECK( part == false );
-
-  }
-
-  SECTION( "lead" ) {
-
-    auto nucleus = NucleusBase::create("Pb");
-
-    CHECK( std::distance(nucleus->begin(), nucleus->end()) == 208 );
-    CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == 208 );
-
-    CHECK( nucleus->radius() > 6. );
-
-    nucleus->sample_nucleons(0.);
-
-    auto initial_participants = std::any_of(
-        nucleus->cbegin(), nucleus->cend(),
-        [](const NucleusBase::NucleonAttr& n) { return std::get<1>(n); });
-    CHECK( initial_participants == false );
-
-    constexpr auto n_events = 1000;
-    constexpr auto n_samples = n_events*208;
-    constexpr auto dr = 1.;
-    std::map<int, int> hist{};
-
-    for (auto i = 0; i < n_events; ++i) {
-      nucleus->sample_nucleons(0.);
-      for (const auto& nucleon : *nucleus) {
-        auto coord = std::get<0>(nucleon);
-        auto x = std::get<0>(coord);
-        auto y = std::get<1>(coord);
-        auto r = std::sqrt(x*x + y*y);
-        ++hist[r/dr];
-      }
+    for (const auto& nucleon : *nucleus) {
+      auto coord = nucleon.position();
+      auto x = std::get<0>(coord);
+      auto y = std::get<1>(coord);
+      auto p = std::sqrt(x*x + y*y);
+      ++hist[p/dp];
     }
+  }
 
-    std::ostringstream hist_output{};
-    for (const auto& bin : hist) {
-      hist_output << dr*bin.first << ": "
-                  << std::string(300*bin.second/n_samples/dr, '*') << '\n';
+  // calculate the W-S distribution at radius p by numerically integrating
+  // through the z-direction
+  auto woods_saxon = [](double p) -> double {
+    double R = 6.67, a = 0.44;
+    double zmax = R + 10.*a;
+    int nstep = 1000;
+    double result = 0.;
+    for (auto i = 0; i < nstep; ++i) {
+      auto z = (i+.5)*zmax/nstep;
+      result += p/(1.+std::exp((std::sqrt(p*p + z*z) - R)/a));
     }
-    INFO( hist_output.str() );
-    CHECK( true );
+    return result;
+  };
 
+  // normalize the histogram and the numerical W-S dist by their values at a
+  // point near their peaks
+  double norm_point = 5.;
+  double hist_norm = hist[norm_point/dp];
+  double ws_norm = woods_saxon(norm_point);
+
+  // check all histogram bins agree with the numerical dist within stat error
+  auto all_bins_correct = true;
+  std::ostringstream bin_output{};
+  bin_output << std::fixed << std::boolalpha
+             << "p        samples  dist     pass\n";
+  for (const auto& bin : hist) {
+    double p = (bin.first + .5)*dp;
+    double hist_result = bin.second/hist_norm;
+    double ws_result = woods_saxon(p)/ws_norm;
+    double tolerance = 3/std::sqrt(hist_result);
+    bool within_tol = std::abs(hist_result - ws_result) < tolerance;
+    all_bins_correct = within_tol;
+    bin_output << p << ' '
+               << hist_result << ' '
+               << ws_result << ' '
+               << within_tol << '\n';
   }
+  INFO( bin_output.str() );
+  CHECK( all_bins_correct );
+}
 
-  SECTION( "unknown species" ) {
-    CHECK_THROWS_AS( NucleusBase::create("hello"), std::invalid_argument );
-  }
-
+TEST_CASE( "unknown nucleus species" ) {
+  CHECK_THROWS_AS( NucleusBase::create("hello"), std::invalid_argument );
 }
