@@ -94,11 +94,21 @@ TEST_CASE( "lead nucleus" ) {
       [](const NucleonData& n) { return n.is_participant(); });
   CHECK( !initial_participants );
 
+  // Test Woods-Saxon sampling.
+  // This is honestly not a great test; while it does prove that the code
+  // basically works as intended, it does not rigorously show that the generated
+  // numbers are actually Woods-Saxon distributed.  Personally I am much more
+  // convinced by plotting a histogram and visually comparing it to the smooth
+  // curve.  The script 'plot-woods-saxon.py' in the 'woods-saxon' subdirectory
+  // does this.
+
   // sample a bunch of nuclei and bin all the nucleon positions
   // using "p" for cylindrical radius to distinguish from spherical "r"
-  constexpr auto dp = .2;
+  constexpr auto dp = .5;
+  constexpr auto nevents = 1000;
+  constexpr auto nsamples = nevents * A;
   std::map<int, int> hist{};
-  for (auto i = 0; i < 5000; ++i) {
+  for (auto i = 0; i < nevents; ++i) {
     nucleus->sample_nucleons(0.);
     for (const auto& nucleon : *nucleus) {
       auto coord = nucleon.position();
@@ -109,41 +119,43 @@ TEST_CASE( "lead nucleus" ) {
     }
   }
 
-  // calculate the W-S distribution at radius p by numerically integrating
-  // through the z-direction
-  auto woods_saxon = [](double p) -> double {
-    double R = 6.67, a = 0.44;
-    double zmax = R + 10.*a;
-    int nstep = 1000;
+  // integrate the W-S dist from pmin to pmax and over all z
+  constexpr double R = 6.67, a = 0.44;
+  constexpr double rmax = R + 10.*a;
+  auto integrate_woods_saxon = [R, a, rmax](double pmin, double pmax) -> double {
+    int nzbins = 1000;
+    auto npbins = static_cast<int>(nzbins*(pmax-pmin)/rmax);
     double result = 0.;
-    for (auto i = 0; i < nstep; ++i) {
-      auto z = (i+.5)*zmax/nstep;
-      result += p/(1.+std::exp((std::sqrt(p*p + z*z) - R)/a));
+    for (auto ip = 0; ip <= npbins; ++ip) {
+      auto p = pmin + (ip*(pmax-pmin))/(npbins - 1);
+      for (auto iz = 0; iz < nzbins; ++iz) {
+        auto z = (iz*rmax)/(nzbins-1);
+        result += p/(1.+std::exp((std::sqrt(p*p + z*z) - R)/a));
+      }
     }
     return result;
   };
 
-  // normalize the histogram and the numerical W-S dist by their values at a
-  // point near their peaks
-  double norm_point = 5.;
-  double hist_norm = hist[norm_point/dp];
-  double ws_norm = woods_saxon(norm_point);
+  double ws_norm = integrate_woods_saxon(0, rmax);
 
-  // check all histogram bins agree with the numerical dist within stat error
+  // check all histogram bins agree with numerical integration
   auto all_bins_correct = true;
   std::ostringstream bin_output{};
   bin_output << std::fixed << std::boolalpha
-             << "p        samples  dist     pass\n";
+             << "pmin     pmax     prob     cprob    ratio    pass\n";
   for (const auto& bin : hist) {
-    double p = (bin.first + .5)*dp;
-    double hist_result = bin.second/hist_norm;
-    double ws_result = woods_saxon(p)/ws_norm;
-    double tolerance = 3/std::sqrt(hist_result);
-    bool within_tol = std::abs(hist_result - ws_result) < tolerance;
-    all_bins_correct = within_tol;
-    bin_output << p << ' '
-               << hist_result << ' '
-               << ws_result << ' '
+    auto pmin = bin.first * dp;
+    auto pmax = pmin + dp;
+    auto prob = static_cast<double>(bin.second) / nsamples;
+    auto correct_prob = integrate_woods_saxon(pmin, pmax) / ws_norm;
+    bool within_tol = prob == Approx(correct_prob).epsilon(.1);
+    if (!within_tol)
+      all_bins_correct = false;
+    bin_output << pmin << ' '
+               << pmax << ' '
+               << prob << ' '
+               << correct_prob << ' '
+               << prob/correct_prob << ' '
                << within_tol << '\n';
   }
   INFO( bin_output.str() );
