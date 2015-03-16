@@ -17,56 +17,54 @@ using namespace trento;
 
 TEST_CASE( "nucleon data" ) {
 
-  NucleonData nucleon_data{};
+  Nucleus::NucleonData nucleon_data{};
 
   // should not be a participant initially
-  CHECK( !nucleon_data.is_participant() );
-
-  // set and retrieve position
-  nucleon_data.set_position({1, 2});
-  std::array<double, 2> correct_position{1, 2};
-  CHECK( nucleon_data.position() == correct_position );
-
-  // should still not be a participant
   CHECK( !nucleon_data.is_participant() );
 
   // set and retrieve participant
   nucleon_data.set_participant();
   CHECK( nucleon_data.is_participant() );
 
-  // setting new position resets participant
-  nucleon_data.set_position({3, 4});
-  CHECK( !nucleon_data.is_participant() );
-
 }
 
 TEST_CASE( "proton" ) {
 
-  auto nucleus = NucleusBase::create("p");
+  auto nucleus = Nucleus::create("p");
 
-  // contains one nucleon
+  // proton contains one nucleon
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == 1 );
   CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == 1 );
 
+  // and has zero radius
   CHECK( nucleus->radius() == 0. );
 
+  // sample position with random offset
   double offset = random::canonical<>();
   nucleus->sample_nucleons(offset);
-
   auto&& proton = *(nucleus->begin());
-  std::array<double, 2> correct_position{-offset, 0.};
 
-  CHECK( proton.position() == correct_position );
+  // check correct position
+  CHECK( proton.x() == offset );
+  CHECK( proton.y() == 0. );
+
+  // not a participant initially
   CHECK( !proton.is_participant() );
 
+  // set as participant
+  proton.set_participant();
+  CHECK( proton.is_participant() );
+
+  // resampling nucleons resets participant state
+  nucleus->sample_nucleons(0.);
+  CHECK( !proton.is_participant() );
 }
 
 TEST_CASE( "lead nucleus" ) {
 
-  auto nucleus = NucleusBase::create("Pb");
+  auto nucleus = Nucleus::create("Pb");
 
-  constexpr auto A = 208;
-
+  int A = 208;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
   CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
 
@@ -78,21 +76,30 @@ TEST_CASE( "lead nucleus" ) {
   // average nucleon position
   double x = 0., y = 0.;
   for (const auto& nucleon : *nucleus) {
-    auto coord = nucleon.position();
-    x += std::get<0>(coord);
-    y += std::get<1>(coord);
+    x += nucleon.x();
+    y += nucleon.y();
   }
   x /= A;
   y /= A;
   auto tolerance = .6;
-  CHECK( std::abs(x + offset) < tolerance );
+  CHECK( std::abs(x - offset) < tolerance );
   CHECK( std::abs(y) < tolerance );
 
   // no initial participants
   bool initial_participants = std::any_of(
       nucleus->cbegin(), nucleus->cend(),
-      [](const NucleonData& n) { return n.is_participant(); });
+      [](decltype(*nucleus->cbegin())& n) {
+        return n.is_participant();
+      });
   CHECK( !initial_participants );
+
+}
+
+TEST_CASE( "woods-saxon sampling" ) {
+
+  int A = 200;
+  double R = 6., a = .5;
+  NucleusPtr nucleus{new WoodsSaxonNucleus{static_cast<std::size_t>(A), R, a}};
 
   // Test Woods-Saxon sampling.
   // This is honestly not a great test; while it does prove that the code
@@ -104,24 +111,22 @@ TEST_CASE( "lead nucleus" ) {
 
   // sample a bunch of nuclei and bin all the nucleon positions
   // using "p" for cylindrical radius to distinguish from spherical "r"
-  constexpr auto dp = .5;
-  constexpr auto nevents = 1000;
-  constexpr auto nsamples = nevents * A;
+  auto dp = .5;
+  auto nevents = 1000;
+  auto nsamples = nevents * A;
   std::map<int, int> hist{};
   for (auto i = 0; i < nevents; ++i) {
     nucleus->sample_nucleons(0.);
     for (const auto& nucleon : *nucleus) {
-      auto coord = nucleon.position();
-      auto x = std::get<0>(coord);
-      auto y = std::get<1>(coord);
+      auto x = nucleon.x();
+      auto y = nucleon.y();
       auto p = std::sqrt(x*x + y*y);
       ++hist[p/dp];
     }
   }
 
   // integrate the W-S dist from pmin to pmax and over all z
-  constexpr double R = 6.67, a = 0.44;
-  constexpr double rmax = R + 10.*a;
+  double rmax = R + 10.*a;
   auto integrate_woods_saxon = [R, a, rmax](double pmin, double pmax) -> double {
     int nzbins = 1000;
     auto npbins = static_cast<int>(nzbins*(pmax-pmin)/rmax);
@@ -163,5 +168,5 @@ TEST_CASE( "lead nucleus" ) {
 }
 
 TEST_CASE( "unknown nucleus species" ) {
-  CHECK_THROWS_AS( NucleusBase::create("hello"), std::invalid_argument );
+  CHECK_THROWS_AS( Nucleus::create("hello"), std::invalid_argument );
 }

@@ -27,7 +27,7 @@ using VarMap = po::variables_map;
 
 namespace trento {
 
-class NucleusBase;
+class Nucleus;
 
 }  // namespace trento
 

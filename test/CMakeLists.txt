@@ -32,7 +32,7 @@ add_custom_command(OUTPUT ${CATCH_FILE} COMMAND ${CMAKE_COMMAND} -P ${SCRIPT_FIL
 
 # Disable some flags for test code.  We don't care about these right now and
 # they also cause problems with Catch.
-foreach(FLAG "inline" "shadow" "ctor-dtor-privacy")
+foreach(FLAG "inline" "ctor-dtor-privacy")
   string(REPLACE " -W${FLAG}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endforeach()
 

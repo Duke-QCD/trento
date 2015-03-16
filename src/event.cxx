@@ -20,7 +20,7 @@ namespace {
 NucleusPtr make_nucleus(const VarMap& var_map, std::size_t index) {
   const auto& species = var_map["projectile"]
                         .as<std::vector<std::string>>().at(index);
-  return NucleusBase::create(species);
+  return Nucleus::create(species);
 }
 
 }  // unnamed namespace

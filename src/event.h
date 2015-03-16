@@ -25,7 +25,7 @@ class Event {
 
  private:
   ///
-  std::unique_ptr<NucleusBase> nucA_, nucB_;
+  std::unique_ptr<Nucleus> nucA_, nucB_;
 
   ///
   double b_min_, b_max_;

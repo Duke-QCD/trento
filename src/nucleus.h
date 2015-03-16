@@ -5,121 +5,140 @@
 #ifndef NUCLEUS_H
 #define NUCLEUS_H
 
-#include <array>
 #include <memory>
+#include <random>
 #include <string>
+#include <vector>
 
 #include "fwd_decl.h"
 
 namespace trento {
 
 ///
-class NucleonData {
- public:
-  ///
-  NucleonData() = default;
-
-  /// Disable all copy and move operations.
-  NucleonData(const NucleonData&) = delete;
-  NucleonData& operator=(const NucleonData&) = delete;
-  NucleonData(NucleonData&&) = delete;
-  NucleonData& operator=(NucleonData&&) = delete;
-
-  ///
-  const std::array<double, 2>& position() const { return position_; }
-
-  ///
-  void set_position(const std::array<double, 2>& new_position) {
-    position_ = new_position;
-    participant_ = false;
-  }
-
-  ///
-  bool is_participant() const { return participant_; }
-
-  ///
-  void set_participant() { participant_ = true; }
-
- private:
-  ///
-  std::array<double, 2> position_;
-
-  ///
-  bool participant_ = false;
-};
+using NucleusPtr = std::unique_ptr<Nucleus>;
 
 ///
-using NucleusPtr = std::unique_ptr<NucleusBase>;
-
-///
-class NucleusBase {
+class Nucleus {
  public:
   ///
   static NucleusPtr create(const std::string& species);
 
   ///
-  virtual void sample_nucleons(double offset) = 0;
+  virtual ~Nucleus() = default;
 
   ///
   virtual double radius() const = 0;
 
   ///
-  template <std::size_t A>
-  using NucleonDataArray = std::array<NucleonData, A>;
+  virtual void sample_nucleons(double offset) = 0;
 
   ///
-  using iterator = NucleonDataArray<1>::iterator;
-  using const_iterator = NucleonDataArray<1>::const_iterator;
+  class NucleonData {
+    friend class Nucleus;
 
-  virtual iterator begin() noexcept = 0;
-  virtual const_iterator cbegin() const noexcept = 0;
-  virtual iterator end() noexcept = 0;
-  virtual const_iterator cend() const noexcept = 0;
+   public:
+    ///
+    NucleonData() = default;
+
+    /// Disable all copy and move operations.
+    NucleonData(const NucleonData&) = delete;
+    NucleonData& operator=(const NucleonData&) = delete;
+    NucleonData(NucleonData&&) = delete;
+    NucleonData& operator=(NucleonData&&) = delete;
+
+    ///
+    double x() const
+    { return x_; }
+
+    ///
+    double y() const
+    { return y_; }
+
+    ///
+    bool is_participant() const
+    { return participant_; }
+
+    ///
+    void set_participant()
+    { participant_ = true; }
+
+   private:
+    ///
+    void set_position(double x, double y);
+
+    ///
+    double x_, y_;
+
+    ///
+    bool participant_ = false;
+  };
 
   ///
-  virtual ~NucleusBase() = default;
+  using iterator = std::vector<NucleonData>::iterator;
+  using const_iterator = std::vector<NucleonData>::const_iterator;
+
+  ///
+  iterator begin() noexcept
+  { return nucleon_data_vector_.begin(); }
+  iterator end() noexcept
+  { return nucleon_data_vector_.end(); }
+
+  ///
+  const_iterator begin() const noexcept
+  { return nucleon_data_vector_.begin(); }
+  const_iterator end() const noexcept
+  { return nucleon_data_vector_.end(); }
+
+  ///
+  const_iterator cbegin() const noexcept
+  { return nucleon_data_vector_.cbegin(); }
+  const_iterator cend() const noexcept
+  { return nucleon_data_vector_.cend(); }
 
  protected:
   ///
-  NucleusBase() = default;
+  explicit Nucleus(std::size_t A);
+
+  ///
+  template <typename... Args>
+  void set_nucleon_position(NucleonData& nucleon_data, Args&&... args);
+
+ private:
+  std::vector<NucleonData> nucleon_data_vector_;
 };
 
 ///
-template <std::size_t A, typename NucleonSampler>
-class Nucleus : public NucleusBase {
+class Proton : public Nucleus {
  public:
+  ///
+  Proton();
+
+  ///
+  virtual double radius() const override;
+
+  ///
+  virtual void sample_nucleons(double offset) override;
+};
+
+/// Samples nucleons from a spherically symmetric Woods-Saxon distribution.
+/// For non-deformed heavy nuclei such as lead.
+class WoodsSaxonNucleus : public Nucleus {
+ public:
+  ///
+  WoodsSaxonNucleus(std::size_t A, double R, double a);
+
+  ///
+  virtual double radius() const override;
+
   ///
   virtual void sample_nucleons(double offset) override;
 
-  virtual double radius() const override
-  { return nucleon_sampler_.radius(); }
-
-  virtual iterator begin() noexcept override
-  { return nucleon_data_array_.begin(); }
-
-  virtual const_iterator cbegin() const noexcept override
-  { return nucleon_data_array_.cbegin(); }
-
-  virtual iterator end() noexcept override
-  { return nucleon_data_array_.end(); }
-
-  virtual const_iterator cend() const noexcept override
-  { return nucleon_data_array_.cend(); }
-
  private:
   ///
-  friend NucleusPtr NucleusBase::create(const std::string&);
-
-  /// Private constructor, only accessible by \c NucleusBase::create.
-  /// Perfect-forwards arguments to the NucleonSampler policy.
-  template <typename... SamplerArgs>
-  Nucleus(SamplerArgs&&... sampler_args);
+  const double R_, a_;
 
   ///
-  NucleonDataArray<A> nucleon_data_array_;
-
-  ///
-  NucleonSampler nucleon_sampler_;
+  mutable std::piecewise_linear_distribution<double> woods_saxon_dist_;
 };
 
 }  // namespace trento
