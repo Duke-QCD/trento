@@ -11,7 +11,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/program_options.hpp>
 
-#include "event.h"
+#include "collider.h"
 #include "fwd_decl.h"
 
 // CMake sets this definition.
@@ -58,9 +58,6 @@ int main(int argc, char* argv[]) {
   // There are quite a few options, so let's separate them into logical groups.
   using OptDesc = po::options_description;
 
-  // Will be set by program_options.
-  std::size_t number_events;
-
   using VecStr = std::vector<std::string>;
   OptDesc main_opts{};
   main_opts.add_options()
@@ -71,7 +68,7 @@ int main(int argc, char* argv[]) {
             throw po::required_option{"projectile"};
            }),
      "projectile symbols")
-    ("number-events", po::value<std::size_t>(&number_events)->default_value(1),
+    ("number-events", po::value<int>()->default_value(1),
      "number of events");
 
   // Make all main arguments positional.
@@ -105,7 +102,7 @@ int main(int argc, char* argv[]) {
     ("fluctuation,k",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
      "gamma fluctuation shape parameter")
-    ("beam-energy,s",
+    ("beam-energy,e",
      po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
      "beam energy sqrt(s) [GeV]")
     ("nucleon-width,w",
@@ -117,45 +114,48 @@ int main(int argc, char* argv[]) {
     ("normalization,n",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
      "normalization factor")
-    ("b-min,b",
+    ("b-min",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum impact parameter [fm]")
-    ("b-max,B",
+    ("b-max",
      po::value<double>()->value_name("FLOAT")->default_value(-1., "auto"),
-     "maximum impact parameter [fm]");
+     "maximum impact parameter [fm]")
+    ("random-seed",
+     po::value<int64_t>()->value_name("INT")->default_value(-1, "auto"),
+     "random seed");
 
   OptDesc grid_opts{"grid options"};
   grid_opts.add_options()
-    ("grid-size",
-     po::value<double>()->value_name("FLOAT")->default_value(10., "10.0"),
-     "grid size [fm], grid extends from -size to +size")
-    ("grid-step",
-     po::value<double>()->value_name("FLOAT")->default_value(.1, "0.1"),
-     "grid step size [fm]");
+    ("grid-width",
+     po::value<double>()->value_name("FLOAT")->default_value(20., "20.0"),
+     "width [fm], extends from -width/2 to +width/2")
+    ("grid-steps",
+     po::value<int>()->value_name("INT")->default_value(201, "201"),
+     "number of steps from -width/2 to +width/2");
+
+  // Make a meta-group containing all the option groups except the main
+  // positional options (don't want the auto-generated usage info for those).
+  OptDesc usage_opts{};
+  usage_opts
+    .add(general_opts)
+    .add(output_opts)
+    .add(phys_opts)
+    .add(grid_opts);
+
+  // Now a meta-group containing _all_ options.
+  OptDesc all_opts{};
+  all_opts
+    .add(usage_opts)
+    .add(main_opts);
 
   // Will be used several times.
   const std::string usage_str{
     "usage: trento [options] projectile projectile [number-events = 1]\n"};
 
-  // Initialize this before the try...catch block so it stays in scope
-  // afterwards.
-  VarMap var_map;
-
   try {
-    // Make a meta-group containing all the option groups except the main
-    // positional options (don't want the auto-generated usage info for those).
-    OptDesc usage_opts{};
-    usage_opts
-      .add(general_opts)
-      .add(output_opts)
-      .add(phys_opts)
-      .add(grid_opts);
-
-    // Now a meta-group containing _all_ options.
-    OptDesc all_opts{};
-    all_opts
-      .add(usage_opts)
-      .add(main_opts);
+    // Initialize a VarMap (boost::program_options::variables_map).
+    // It will contain all configuration values.
+    VarMap var_map{};
 
     // Parse command line options.
     po::store(po::command_line_parser(argc, argv)
@@ -209,6 +209,10 @@ int main(int argc, char* argv[]) {
     // Save all the final values into var_map.
     // Exceptions may occur here.
     po::notify(var_map);
+
+    // Go!
+    Collider collider{var_map};
+    collider.run_events();
   }
   catch (const po::required_option&) {
     // Handle this exception separately from others.
@@ -218,18 +222,6 @@ int main(int argc, char* argv[]) {
   }
   catch (const std::exception& e) {
     // For all other exceptions just output the error message.
-    std::cerr << e.what() << '\n';
-    return 1;
-  }
-
-  try {
-    Event event(var_map);
-
-    for (std::size_t i = 0; i < number_events; ++i) {
-      event.collide();
-    }
-  }
-  catch (const std::exception& e) {
     std::cerr << e.what() << '\n';
     return 1;
   }
