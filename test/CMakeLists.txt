@@ -30,12 +30,6 @@ endif()
 ")
 add_custom_command(OUTPUT ${CATCH_FILE} COMMAND ${CMAKE_COMMAND} -P ${SCRIPT_FILE})
 
-# Disable some flags for test code.  We don't care about these right now and
-# they also cause problems with Catch.
-foreach(FLAG "inline" "ctor-dtor-privacy")
-  string(REPLACE " -W${FLAG}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-endforeach()
-
 # Compile the Catch test executable.
 set(TEST_EXE "test-${PROJECT_NAME}")
 add_executable(${TEST_EXE} EXCLUDE_FROM_ALL
