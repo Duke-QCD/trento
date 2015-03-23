@@ -1,6 +1,7 @@
 # Compile everything except the main source file into a static lib to be linked
 # to both the main executable and the tests.
 add_library(${LIBRARY_NAME} STATIC
+  collider.cxx
   event.cxx
   nucleon.cxx
   nucleus.cxx

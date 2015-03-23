@@ -4,40 +4,108 @@
 
 #include "event.h"
 
-#include <string>
-#include <vector>
+#include <iomanip>
+#include <iostream>
 
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <boost/program_options/variables_map.hpp>
-
-#include "fwd_decl.h"
-#include "nucleus.h"
 
 namespace trento {
 
+Event::Event(int grid_steps)
+    : TA(boost::extents[grid_steps][grid_steps]),
+      TB(boost::extents[grid_steps][grid_steps]),
+      TR(boost::extents[grid_steps][grid_steps])
+{}
+
 namespace {
 
-// Helper function to create NucleusPtr members of Event.
-NucleusPtr make_nucleus(const VarMap& var_map, std::size_t index) {
-  const auto& species = var_map["projectile"]
-                        .as<std::vector<std::string>>().at(index);
-  return Nucleus::create(species);
+std::ostream& operator<<(std::ostream& os, const Event& event) {
+  using std::fixed;
+  using std::setprecision;
+  using std::setw;
+  using std::scientific;
+
+  os << setprecision(10)       << event.num
+     << setw(14) << fixed      << event.impact_param
+     << setw(5)                << event.npart
+     << setw(18) << scientific << event.multiplicity
+     << fixed;
+
+  for (const auto& ecc : event.eccentricity)
+    os << setw(14)             << ecc.second;
+
+  return os << '\n';
+}
+
+void write_text_file(const fs::path& path, const Event& event) {
+  fs::ofstream ofs{path};
+  ofs << std::setprecision(10) << std::fixed
+      << "# event "   << event.num          << '\n'
+      << "# b     = " << event.impact_param << '\n'
+      << "# npart = " << event.npart        << '\n'
+      << "# mult  = " << event.multiplicity << '\n';
+
+  for (const auto& ecc : event.eccentricity)
+    ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
+
+  // XXX: improve this?
+  ofs << std::scientific;
+  for (const auto& row : event.TR) {
+    for (const auto& elem : row) {
+      ofs << elem << ' ';
+    }
+    ofs << '\n';
+  }
 }
 
 }  // unnamed namespace
 
-Event::Event(const VarMap& var_map)
-  : nucA_(make_nucleus(var_map, 0)),  // make_nucleus defined above
-    nucB_(make_nucleus(var_map, 1)),
-    b_min_(var_map["b-min"].as<double>()),
-    b_max_(var_map["b-max"].as<double>()) {}
+OutputFunctionVector create_output_functions(const VarMap& var_map) {
+  OutputFunctionVector output_functions;
 
-// Explicitly-defined default destructor; see header for explanation.
-Event::~Event() = default;
+  auto num_events = var_map["number-events"].as<int>();
+  auto event_num_width = static_cast<int>(std::ceil(std::log10(num_events)));
 
-void Event::collide() {
-  nucA_->sample_nucleons(-1.);
-  nucB_->sample_nucleons(+1.);
+  // Write to stdout unless the quiet option was specified.
+  if (!var_map["quiet"].as<bool>()) {
+    output_functions.emplace_back(
+      [event_num_width](const Event& event) {
+        std::cout << std::setw(event_num_width) << event;
+      }
+    );
+  }
+
+  if (var_map.count("output")) {
+    auto output_path = var_map["output"].as<fs::path>();
+    if (output_path.has_extension() && (
+          output_path.extension() == ".hdf5" ||
+          output_path.extension() == ".hd5"  ||
+          output_path.extension() == ".h5"
+          )) {
+      throw std::runtime_error{"HDF5 not implemented yet"};  // TODO
+    } else {
+      if (fs::exists(output_path)) {
+        if (!fs::is_empty(output_path)) {
+          throw std::runtime_error{"output directory '" + output_path.string() +
+                                   "' must be empty"};
+        }
+      } else {
+        fs::create_directories(output_path);
+      }
+      output_functions.emplace_back(
+        [output_path, event_num_width](const Event& event) {
+          std::ostringstream padded_fname{};
+          padded_fname << std::setw(event_num_width) << std::setfill('0')
+                       << event.num << ".dat";
+          write_text_file(output_path / padded_fname.str(), event);
+        }
+      );
+    }
+  }
+
+  return output_functions;
 }
-
 
 }  // namespace trento

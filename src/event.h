@@ -5,31 +5,51 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#include <memory>
+#include <functional>
+#include <map>
+#include <vector>
+
+#ifdef NDEBUG
+#define BOOST_DISABLE_ASSERTS
+#endif
+#include <boost/multi_array.hpp>
 
 #include "fwd_decl.h"
 
 namespace trento {
 
 ///
-class Event {
- public:
+struct Event {
   ///
-  explicit Event(const VarMap& var_map);
+  Event(int grid_size);
 
-  ///
-  ~Event();
+  /// The event number within the batch.
+  int num;
 
-  ///
-  void collide();
+  /// Impact parameter.
+  double impact_param;
 
- private:
-  ///
-  std::unique_ptr<Nucleus> nucA_, nucB_;
+  /// Number of participants.
+  int npart;
 
-  ///
-  double b_min_, b_max_;
+  /// Multiplicity (total entropy).
+  double multiplicity;
+
+  /// Eccentricity harmonics.
+  std::map<int, double> eccentricity;
+
+  /// Alias for a two-dimensional thickness grid.
+  using Grid = boost::multi_array<double, 2>;
+
+  /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
+  Grid TA, TB, TR;
 };
+
+///
+using OutputFunctionVector = std::vector<std::function<void(const Event&)>>;
+
+///
+OutputFunctionVector create_output_functions(const VarMap& var_map);
 
 }  // namespace trento
 
