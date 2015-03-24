@@ -36,7 +36,7 @@ class Collider {
 
   ///
   void compute_nuclear_thickness_and_npart(const Nucleus& nucleus,
-                                           Event::Grid& thickness);
+                                           Event::Grid& TX);
 
   ///
   std::function<void(void)> compute_reduced_thickness;
@@ -63,13 +63,10 @@ class Collider {
   const double asymmetry_;
 
   ///
-  const double grid_width_;
-
-  ///
   const int grid_steps_;
 
   ///
-  const double grid_delta_;
+  const double grid_half_width_, grid_delta_;
 
   ///
   Event event_;

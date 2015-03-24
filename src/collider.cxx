@@ -5,6 +5,7 @@
 #include "collider.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -27,28 +28,37 @@ NucleusPtr create_nucleus(const VarMap& var_map, std::size_t index) {
 }
 
 // Non-member functions to get the first and last element of a boost::multi_array.
-// Useful for looping over the entire flattened grid.
-// Named first() and last() to distinguish from begin() and end().
+// For iterating over the entire flattened grid.
 // Provide const and non-const overloads.
 
 template <typename T, std::size_t D, typename A>
-inline T* first(boost::multi_array<T, D, A>& a) {
+inline T* flat_begin(boost::multi_array<T, D, A>& a) {
   return a.origin();
 }
 
 template <typename T, std::size_t D, typename A>
-inline const T* first(const boost::multi_array<T, D, A>& a) {
+inline const T* flat_begin(const boost::multi_array<T, D, A>& a) {
   return a.origin();
 }
 
 template <typename T, std::size_t D, typename A>
-inline T* last(boost::multi_array<T, D, A>& a) {
-  return a.origin() + a.num_elements();
+inline const T* flat_cbegin(const boost::multi_array<T, D, A>& a) {
+  return a.origin();
 }
 
 template <typename T, std::size_t D, typename A>
-inline const T* last(const boost::multi_array<T, D, A>& a) {
-  return a.origin() + a.num_elements();
+inline T* flat_end(boost::multi_array<T, D, A>& a) {
+  return flat_begin(a) + a.num_elements();
+}
+
+template <typename T, std::size_t D, typename A>
+inline const T* flat_end(const boost::multi_array<T, D, A>& a) {
+  return flat_begin(a) + a.num_elements();
+}
+
+template <typename T, std::size_t D, typename A>
+inline const T* flat_cend(const boost::multi_array<T, D, A>& a) {
+  return flat_cbegin(a) + a.num_elements();
 }
 
 }  // unnamed namespace
@@ -76,9 +86,9 @@ Collider::Collider(const VarMap& var_map)
         else
           return a/sum;
       }(nucleusA_->radius(), nucleusB_->radius())),
-      grid_width_(var_map["grid-width"].as<double>()),
       grid_steps_(var_map["grid-steps"].as<int>()),
-      grid_delta_(grid_width_/(grid_steps_ - 1)),
+      grid_half_width_(.5*var_map["grid-width"].as<double>()),
+      grid_delta_(var_map["grid-width"].as<double>()/(grid_steps_ - 1)),
       event_(grid_steps_) {
   // Constructor body begins here.
   // Set random seed if requested.
@@ -88,16 +98,29 @@ Collider::Collider(const VarMap& var_map)
 
   // Set reduced thickness function based on configuraton.
   auto norm = var_map["normalization"].as<double>();
-  // auto p = var_map["reduced_thickness"].as<double>(); TODO
+  auto p = var_map["reduced-thickness"].as<double>();
 
-  compute_reduced_thickness = [this, norm]() {
-    std::transform(first(event_.TA), last(event_.TA),
-                   first(event_.TB),
-                   first(event_.TR),
-                   [norm](double a, double b) {
-                     return norm * std::sqrt(a*b);
-                   });
-  };
+  if (std::abs(p) < 1e-12) {
+    compute_reduced_thickness = [this, norm]() {
+      std::transform(flat_cbegin(event_.TA), flat_cend(event_.TA),
+                     flat_cbegin(event_.TB),
+                     flat_begin(event_.TR),
+                     [norm](double a, double b) {
+                       return norm * std::sqrt(a*b);
+                     });
+    };
+  } else {
+    compute_reduced_thickness = [this, norm, p]() {
+      std::transform(flat_cbegin(event_.TA), flat_cend(event_.TA),
+                     flat_cbegin(event_.TB),
+                     flat_begin(event_.TR),
+                     [norm, p](double a, double b) {
+                       return norm *
+                              std::pow(.5*(std::pow(a, p) + std::pow(b, p)),
+                                       1./p);
+                     });
+    };
+  }
 }
 
 Collider::~Collider() = default;
@@ -145,24 +168,124 @@ void Collider::new_event() {
 }
 
 void Collider::compute_nuclear_thickness_and_npart(const Nucleus& nucleus,
-                                                   Event::Grid& thickness) {
+                                                   Event::Grid& TX) {
   // Wipe grid with zeros.
-  std::fill(first(thickness), last(thickness), 0.);
+  std::fill(flat_begin(TX), flat_end(TX), 0.);
+
+  const double nucleon_radius = nucleon_.radius();
+  const double nucleon_xymax = grid_half_width_ + nucleon_radius;
 
   // Deposit each participant onto the grid.
   for (const auto& n : nucleus)
     if (n.is_participant()) {
       ++event_.npart;
-      // TODO
+      double x = n.x();
+      double y = n.y();
+
+      // Nucleon is completely off the grid (not even the edge touches).
+      if ((std::abs(x) > nucleon_xymax) || (std::abs(y) > nucleon_xymax))
+        continue;
+
+      // Determine min & max indices of nucleon subgrid.
+      int ixmin = std::max(static_cast<int>(std::floor(
+                    (x - nucleon_radius + grid_half_width_)/grid_delta_
+                  )), 0);
+      int iymin = std::max(static_cast<int>(std::floor(
+                    (y - nucleon_radius + grid_half_width_)/grid_delta_
+                  )), 0);
+      int ixmax = std::min(static_cast<int>(std::ceil(
+                    (x + nucleon_radius + grid_half_width_)/grid_delta_
+                  )), grid_steps_ - 1);
+      int iymax = std::min(static_cast<int>(std::ceil(
+                    (y + nucleon_radius + grid_half_width_)/grid_delta_
+                  )), grid_steps_ - 1);
+
+      double fluct = nucleon_.fluctuate();
+
+      // Add profile to grid.
+      for (auto iy = iymin; iy <= iymax; ++iy) {
+        double dysq = std::pow(y - (iy*grid_delta_) + grid_half_width_, 2);
+        for (auto ix = ixmin; ix <= ixmax; ++ix) {
+          double dxsq = std::pow(x - (ix*grid_delta_) + grid_half_width_, 2);
+          TX[iy][ix] += fluct * nucleon_.thickness(dxsq + dysq);
+        }
+      }
     }
 }
 
 void Collider::compute_observables() {
-    event_.multiplicity = grid_delta_ * grid_delta_ *
-                          std::accumulate(first(event_.TR), last(event_.TR), 0.);
+  double sum = 0.;
+  double xcm = 0.;
+  double ycm = 0.;
 
-    for (int n = 2; n <= 5; ++n)
-      event_.eccentricity[n] = random::canonical<>();
+  // Compute multiplicity and center of mass coordinates.
+  // TODO: include in initial TR loop
+  for (int iy = 0; iy < grid_steps_; ++iy) {
+    for (int ix = 0; ix < grid_steps_; ++ix) {
+      const auto& t = event_.TR[iy][ix];
+      sum += t;
+      xcm += t * ix;
+      ycm += t * iy;
+    }
+  }
+
+  event_.multiplicity = grid_delta_ * grid_delta_ * sum;
+  xcm /= sum;
+  ycm /= sum;
+
+  // Compute eccentricity.
+
+  // Create map of (n, (real, imag, weight)).
+  std::map<int, std::array<double, 3>> ecc;
+
+  for (int iy = 0; iy < grid_steps_; ++iy) {
+    for (int ix = 0; ix < grid_steps_; ++ix) {
+      const auto& t = event_.TR[iy][ix];
+      if (t < 1e-12)
+        continue;
+
+      auto x = static_cast<double>(ix) - xcm;
+      auto x2 = x*x;
+      auto x3 = x2*x;
+      auto x4 = x2*x2;
+
+      auto y = static_cast<double>(iy) - ycm;
+      auto y2 = y*y;
+      auto y3 = y2*y;
+      auto y4 = y2*y2;
+
+      auto r2 = x2 + y2;
+      auto r = std::sqrt(r2);
+      auto r4 = r2*r2;
+
+      auto xy = x*y;
+      auto x2y2 = x2*y2;
+
+      // TODO: explain what is happening here
+      ecc[2][0] += t * (y2 - x2);
+      ecc[2][1] += t * 2.*xy;
+      ecc[2][2] += t * r2;
+
+      ecc[3][0] += t * (y3 - 3.*y*x2);
+      ecc[3][1] += t * (3.*x*y2 - x3);
+      ecc[3][2] += t * r2*r;
+
+      ecc[4][0] += t * (x4 + y4 - 6.*x2y2);
+      ecc[4][1] += t * 4.*xy*(y2 - x2);
+      ecc[4][2] += t * r4;
+
+      ecc[5][0] += t * y*(5.*x4 - 10.*x2y2 + y4);
+      ecc[5][1] += t * x*(x4 - 10.*x2y2 + 5.*y4);
+      ecc[5][2] += t * r4*r;
+    }
+  }
+
+  for (const auto& e : ecc) {
+    const auto& re = e.second[0];
+    const auto& im = e.second[1];
+    const auto w = std::fmax(e.second[2], 1e-12);
+    event_.eccentricity[e.first] = std::sqrt(re*re + im*im) / w;
+  }
 }
 
 }  // namespace trento
