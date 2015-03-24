@@ -16,11 +16,14 @@
 
 namespace trento {
 
+/// Woods-Saxon parameters from http://inspirehep.net/record/786828.
 NucleusPtr Nucleus::create(const std::string& species) {
   if (species == "p")
     return NucleusPtr{new Proton{}};
+  else if (species == "Au")
+    return NucleusPtr{new WoodsSaxonNucleus{197, 6.38, 0.535}};
   else if (species == "Pb")
-    return NucleusPtr{new WoodsSaxonNucleus{208, 6.67, 0.44}};
+    return NucleusPtr{new WoodsSaxonNucleus{208, 6.62, 0.546}};
   else
     throw std::invalid_argument{"unknown projectile species: " + species};
 }

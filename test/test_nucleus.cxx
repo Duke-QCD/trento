@@ -95,6 +95,18 @@ TEST_CASE( "lead nucleus" ) {
 
 }
 
+TEST_CASE( "gold nucleus" ) {
+
+  auto nucleus = Nucleus::create("Au");
+
+  int A = 197;
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
+  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
+
+  CHECK( nucleus->radius() > 6. );
+
+}
+
 TEST_CASE( "woods-saxon sampling" ) {
 
   int A = 200;
