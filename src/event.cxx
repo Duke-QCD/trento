@@ -41,7 +41,7 @@ std::ostream& operator<<(std::ostream& os, const Event& event) {
 
 void write_text_file(const fs::path& path, const Event& event) {
   fs::ofstream ofs{path};
-  ofs << std::setprecision(10) << std::fixed
+  ofs << std::setprecision(10)
       << "# event "   << event.num          << '\n'
       << "# b     = " << event.impact_param << '\n'
       << "# npart = " << event.npart        << '\n'
@@ -51,7 +51,6 @@ void write_text_file(const fs::path& path, const Event& event) {
     ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
 
   // XXX: improve this?
-  ofs << std::scientific;
   for (const auto& row : event.TR) {
     for (const auto& elem : row) {
       ofs << elem << ' ';
