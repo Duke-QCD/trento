@@ -128,9 +128,9 @@ int main(int argc, char* argv[]) {
   grid_opts.add_options()
     ("grid-width",
      po::value<double>()->value_name("FLOAT")->default_value(20., "20.0"),
-     "width [fm], extends from -width/2 to +width/2")
+     "width [fm], grid extends from -width/2 to +width/2")
     ("grid-steps",
-     po::value<int>()->value_name("INT")->default_value(201, "201"),
+     po::value<int>()->value_name("INT")->default_value(200, "200"),
      "number of steps from -width/2 to +width/2");
 
   // Make a meta-group containing all the option groups except the main

@@ -5,7 +5,6 @@
 #include "collider.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -88,7 +87,7 @@ Collider::Collider(const VarMap& var_map)
       }(nucleusA_->radius(), nucleusB_->radius())),
       grid_steps_(var_map["grid-steps"].as<int>()),
       grid_half_width_(.5*var_map["grid-width"].as<double>()),
-      grid_delta_(var_map["grid-width"].as<double>()/(grid_steps_ - 1)),
+      grid_delta_(var_map["grid-width"].as<double>()/grid_steps_),
       event_(grid_steps_) {
   // Constructor body begins here.
   // Set random seed if requested.
@@ -172,46 +171,53 @@ void Collider::compute_nuclear_thickness_and_npart(const Nucleus& nucleus,
   // Wipe grid with zeros.
   std::fill(flat_begin(TX), flat_end(TX), 0.);
 
-  const double nucleon_radius = nucleon_.radius();
-  const double nucleon_xymax = grid_half_width_ + nucleon_radius;
+  const double r = nucleon_.radius();
 
   // Deposit each participant onto the grid.
-  for (const auto& n : nucleus)
-    if (n.is_participant()) {
-      ++event_.npart;
-      double x = n.x();
-      double y = n.y();
+  for (const auto& n : nucleus) {
+    if (!n.is_participant())
+      continue;
 
-      // Nucleon is completely off the grid (not even the edge touches).
-      if ((std::abs(x) > nucleon_xymax) || (std::abs(y) > nucleon_xymax))
-        continue;
+    ++event_.npart;
 
-      // Determine min & max indices of nucleon subgrid.
-      int ixmin = std::max(static_cast<int>(std::floor(
-                    (x - nucleon_radius + grid_half_width_)/grid_delta_
-                  )), 0);
-      int iymin = std::max(static_cast<int>(std::floor(
-                    (y - nucleon_radius + grid_half_width_)/grid_delta_
-                  )), 0);
-      int ixmax = std::min(static_cast<int>(std::ceil(
-                    (x + nucleon_radius + grid_half_width_)/grid_delta_
-                  )), grid_steps_ - 1);
-      int iymax = std::min(static_cast<int>(std::ceil(
-                    (y + nucleon_radius + grid_half_width_)/grid_delta_
-                  )), grid_steps_ - 1);
+    // Work in coordinates relative to (-width/2, -width/2).
+    double x = n.x() + grid_half_width_;
+    double y = n.y() + grid_half_width_;
 
-      double fluct = nucleon_.fluctuate();
+    // Determine min & max indices of nucleon subgrid.
+    int ixmin = std::max(static_cast<int>((x-r)/grid_delta_), 0);
+    int iymin = std::max(static_cast<int>((y-r)/grid_delta_), 0);
+    int ixmax = std::min(static_cast<int>((x+r)/grid_delta_), grid_steps_ - 1);
+    int iymax = std::min(static_cast<int>((y+r)/grid_delta_), grid_steps_ - 1);
 
-      // Add profile to grid.
-      for (auto iy = iymin; iy <= iymax; ++iy) {
-        double dysq = std::pow(y - (iy*grid_delta_) + grid_half_width_, 2);
-        for (auto ix = ixmin; ix <= ixmax; ++ix) {
-          double dxsq = std::pow(x - (ix*grid_delta_) + grid_half_width_, 2);
-          TX[iy][ix] += fluct * nucleon_.thickness(dxsq + dysq);
-        }
+    double fluct = nucleon_.fluctuate();
+
+    // Add profile to grid.
+    for (auto iy = iymin; iy <= iymax; ++iy) {
+      double dysq = std::pow(y - (iy+.5)*grid_delta_, 2);
+      for (auto ix = ixmin; ix <= ixmax; ++ix) {
+        double dxsq = std::pow(x - (ix+.5)*grid_delta_, 2);
+        TX[iy][ix] += fluct * nucleon_.thickness(dxsq + dysq);
       }
     }
+  }
 }
+
+namespace {
+
+// Helper for eccentricity calculations.
+// Used below in Collider::compute_observables();
+struct EccentricityAccumulator {
+  double re = 0.;  // real part
+  double im = 0.;  // imaginary part
+  double wt = 0.;  // weight
+};
+
+double compute_final_ecc(const EccentricityAccumulator& e) {
+  return std::sqrt(e.re*e.re + e.im*e.im) / std::fmax(e.wt, 1e-12);
+}
+
+}  // unnamed namespace
 
 void Collider::compute_observables() {
   double sum = 0.;
@@ -234,9 +240,7 @@ void Collider::compute_observables() {
   ycm /= sum;
 
   // Compute eccentricity.
-
-  // Create map of (n, (real, imag, weight)).
-  std::map<int, std::array<double, 3>> ecc;
+  EccentricityAccumulator e2, e3, e4, e5;
 
   for (int iy = 0; iy < grid_steps_; ++iy) {
     for (int ix = 0; ix < grid_steps_; ++ix) {
@@ -262,30 +266,28 @@ void Collider::compute_observables() {
       auto x2y2 = x2*y2;
 
       // TODO: explain what is happening here
-      ecc[2][0] += t * (y2 - x2);
-      ecc[2][1] += t * 2.*xy;
-      ecc[2][2] += t * r2;
+      e2.re += t * (y2 - x2);
+      e2.im += t * 2.*xy;
+      e2.wt += t * r2;
 
-      ecc[3][0] += t * (y3 - 3.*y*x2);
-      ecc[3][1] += t * (3.*x*y2 - x3);
-      ecc[3][2] += t * r2*r;
+      e3.re += t * (y3 - 3.*y*x2);
+      e3.im += t * (3.*x*y2 - x3);
+      e3.wt += t * r2*r;
 
-      ecc[4][0] += t * (x4 + y4 - 6.*x2y2);
-      ecc[4][1] += t * 4.*xy*(y2 - x2);
-      ecc[4][2] += t * r4;
+      e4.re += t * (x4 + y4 - 6.*x2y2);
+      e4.im += t * 4.*xy*(y2 - x2);
+      e4.wt += t * r4;
 
-      ecc[5][0] += t * y*(5.*x4 - 10.*x2y2 + y4);
-      ecc[5][1] += t * x*(x4 - 10.*x2y2 + 5.*y4);
-      ecc[5][2] += t * r4*r;
+      e5.re += t * y*(5.*x4 - 10.*x2y2 + y4);
+      e5.im += t * x*(x4 - 10.*x2y2 + 5.*y4);
+      e5.wt += t * r4*r;
     }
   }
 
-  for (const auto& e : ecc) {
-    const auto& re = e.second[0];
-    const auto& im = e.second[1];
-    const auto w = std::fmax(e.second[2], 1e-12);
-    event_.eccentricity[e.first] = std::sqrt(re*re + im*im) / w;
-  }
+  event_.eccentricity[2] = compute_final_ecc(e2);
+  event_.eccentricity[3] = compute_final_ecc(e3);
+  event_.eccentricity[4] = compute_final_ecc(e4);
+  event_.eccentricity[5] = compute_final_ecc(e5);
 }
 
 }  // namespace trento

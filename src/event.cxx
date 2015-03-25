@@ -28,7 +28,7 @@ std::ostream& operator<<(std::ostream& os, const Event& event) {
   using std::scientific;
 
   os << setprecision(10)       << event.num
-     << setw(14) << fixed      << event.impact_param
+     << setw(15) << fixed      << event.impact_param
      << setw(5)                << event.npart
      << setw(18) << scientific << event.multiplicity
      << fixed;
@@ -41,6 +41,8 @@ std::ostream& operator<<(std::ostream& os, const Event& event) {
 
 void write_text_file(const fs::path& path, const Event& event) {
   fs::ofstream ofs{path};
+
+  // Write a commented header of event properties as key = value pairs.
   ofs << std::setprecision(10)
       << "# event "   << event.num          << '\n'
       << "# b     = " << event.impact_param << '\n'
@@ -50,12 +52,19 @@ void write_text_file(const fs::path& path, const Event& event) {
   for (const auto& ecc : event.eccentricity)
     ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
 
-  // XXX: improve this?
+  // Write IC profile as a block grid.  Use C++ default float format (not
+  // fixed-width) so that trailing zeros are omitted.  This significantly
+  // increases output speed and saves disk space since many grid elements are
+  // zero.
   for (const auto& row : event.TR) {
-    for (const auto& elem : row) {
-      ofs << elem << ' ';
-    }
-    ofs << '\n';
+    auto&& iter = row.begin();
+    // Write all row elements except the last with a space delimiter afterwards.
+    do {
+      ofs << *iter << ' ';
+    } while (++iter != --row.end());
+
+    // Write the last element and a linebreak.
+    ofs << *iter << '\n';
   }
 }
 
