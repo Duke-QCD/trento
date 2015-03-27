@@ -46,7 +46,7 @@ TEST_CASE( "nucleon properties" ) {
 
   // cross section
   // min-bias impact params
-  auto bsqmax = std::pow(1.5*2*R, 2);
+  auto bsqmax = std::pow(1.1*2*R, 2);
   auto nev = 1e6;
   auto count = 0;
   for (auto i = 0; i < static_cast<int>(nev); ++i)
@@ -55,8 +55,8 @@ TEST_CASE( "nucleon properties" ) {
 
   auto xsec_mc = M_PI*bsqmax * static_cast<double>(count)/nev;
 
-  // precision is better than 1%, but let's be conservative
-  CHECK( xsec_mc == Approx(xsec).epsilon(.01) );
+  // precision is better than this, but let's be conservative
+  CHECK( xsec_mc == Approx(xsec).epsilon(.02) );
 
   // fluctuations
   // just check they have unit mean -- the rest is handled by the C++ impl.
@@ -66,7 +66,7 @@ TEST_CASE( "nucleon properties" ) {
     total += nucleon.fluctuate();
 
   auto mean = total/n;
-  CHECK( mean == Approx(1.).epsilon(.001) );
+  CHECK( mean == Approx(1.).epsilon(.002) );
 
   // nucleon width too small
   auto bad_var_map = make_var_map({
