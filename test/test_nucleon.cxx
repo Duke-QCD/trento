@@ -30,7 +30,7 @@ TEST_CASE( "nucleon properties" ) {
 
   // truncation radius
   auto R = nucleon.radius();
-  CHECK( R == Approx(3*width) );
+  CHECK( R == Approx(5*width) );
 
   // thickness function
   CHECK( nucleon.thickness(0.) == Approx(1/wsq) );

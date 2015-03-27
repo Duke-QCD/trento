@@ -38,7 +38,8 @@ class Nucleon {
 
  private:
   /// Truncate the Gaussian at this number of widths.
-  static constexpr double trunc_widths_ = 3.;
+  // TODO: is this the optimal value?
+  static constexpr double trunc_widths_ = 5.;
 
   /// Width of Gaussian thickness function.
   const double width_squared_;
