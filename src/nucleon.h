@@ -5,6 +5,7 @@
 #ifndef NUCLEON_H
 #define NUCLEON_H
 
+#include "fast_exp.h"
 #include "fwd_decl.h"
 #include "random.h"
 
@@ -45,13 +46,16 @@ class Nucleon {
   /// Truncate the Gaussian at this radius.
   const double trunc_radius_squared_;
 
-  /// Dimensionless parameter set to reproduce the inelastic nucleon-nucleon
-  /// cross section \f$\sigma_{NN}\f$.  Calculated in constructor.
-  double cross_sec_param_;
+  /// Fast exponential for calculating the thickness profile.
+  FastExp<double> fast_exp_;
 
   /// Fluctuation distribution.
   // mutable so that fluctuate() can be const
   mutable std::gamma_distribution<double> fluct_dist_;
+
+  /// Dimensionless parameter set to reproduce the inelastic nucleon-nucleon
+  /// cross section \f$\sigma_{NN}\f$.  Calculated in constructor.
+  double cross_sec_param_;
 };
 
 inline double Nucleon::radius() const {
@@ -66,7 +70,7 @@ inline double Nucleon::thickness(double distance_squared) const {
   if (distance_squared > trunc_radius_squared_)
     return 0.;
 
-  return 1./width_squared_ * std::exp(-.5*distance_squared/width_squared_);
+  return 1./width_squared_ * fast_exp_(-.5*distance_squared/width_squared_);
 }
 
 inline bool Nucleon::participate(double b_squared) const {

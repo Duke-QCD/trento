@@ -24,7 +24,7 @@ namespace {
 //   mean = alpha*beta == 1  ->  beta = 1/alpha
 // Used below in Nucleon ctor initializer list.
 
-template<typename RealType> using param_type =
+template <typename RealType> using param_type =
   typename std::gamma_distribution<RealType>::param_type;
 
 template <typename RealType>
@@ -39,6 +39,7 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
 Nucleon::Nucleon(const VarMap& var_map)
     : width_squared_(std::pow(var_map["nucleon-width"].as<double>(), 2)),
       trunc_radius_squared_(std::pow(trunc_widths_, 2) * width_squared_),
+      fast_exp_(-.5*trunc_widths_*trunc_widths_, 0., 1000),
       fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())) {
   // Determine cross section.
   auto sigma_nn = var_map["cross-section"].as<double>();
