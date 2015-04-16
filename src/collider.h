@@ -10,6 +10,7 @@
 #include "fwd_decl.h"
 #include "event.h"
 #include "nucleon.h"
+#include "output.h"
 
 namespace trento {
 
@@ -32,44 +33,28 @@ class Collider {
 
  private:
   ///
-  void new_event();
-
-  ///
-  void compute_nuclear_thickness_and_npart(const Nucleus& nucleus,
-                                           Event::Grid& TX);
-
-  ///
-  std::function<void(void)> compute_reduced_thickness;
-
-  ///
-  void compute_observables();
+  double sample_impact_param();
 
   ///
   std::unique_ptr<Nucleus> nucleusA_, nucleusB_;
 
   ///
-  Nucleon nucleon_;
+  NucleonProfile nucleon_profile_;
 
   ///
-  OutputFunctionVector output_functions_;
+  const int nevents_;
 
   ///
-  const int num_events_;
-
-  ///
-  const double b_min_, b_max_;
+  const double bmin_, bmax_;
 
   ///
   const double asymmetry_;
 
   ///
-  const int grid_steps_;
-
-  ///
-  const double grid_half_width_, grid_delta_;
-
-  ///
   Event event_;
+
+  ///
+  Output output_;
 };
 
 }  // namespace trento

@@ -5,6 +5,7 @@ add_library(${LIBRARY_NAME} STATIC
   event.cxx
   nucleon.cxx
   nucleus.cxx
+  output.cxx
   random.cxx
 )
 set_target_properties(${LIBRARY_NAME} PROPERTIES PREFIX "")

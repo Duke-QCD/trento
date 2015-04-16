@@ -22,7 +22,7 @@ class FastExp {
   T operator()(T x) const;
 
  private:
-  /// Minimun and maximum.
+  /// Minimum and maximum.
   const T xmin_, xmax_;
 
   /// Step size.

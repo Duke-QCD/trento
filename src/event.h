@@ -7,7 +7,6 @@
 
 #include <functional>
 #include <map>
-#include <vector>
 
 #ifdef NDEBUG
 #define BOOST_DISABLE_ASSERTS
@@ -18,38 +17,76 @@
 
 namespace trento {
 
+class NucleonProfile;
+
 ///
-struct Event {
+class Event {
+ public:
   ///
-  Event(int grid_size);
+  explicit Event(const VarMap& var_map);
 
-  /// The event number within the batch.
-  int num;
-
-  /// Impact parameter.
-  double impact_param;
-
-  /// Number of participants.
-  int npart;
-
-  /// Multiplicity (total entropy).
-  double multiplicity;
-
-  /// Eccentricity harmonics.
-  std::map<int, double> eccentricity;
+  ///
+  void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
+               const NucleonProfile& profile);
 
   /// Alias for a two-dimensional thickness grid.
   using Grid = boost::multi_array<double, 2>;
 
+  ///
+  const int& npart() const
+  { return npart_; }
+
+  ///
+  const double& multiplicity() const
+  { return multiplicity_; }
+
+  ///
+  const std::map<int, double>& eccentricity() const
+  { return eccentricity_; }
+
+  ///
+  const Grid& reduced_thickness_grid() const
+  { return TR_; }
+
+ private:
+  ///
+  void compute_nuclear_thickness(
+      const Nucleus& nucleus, const NucleonProfile& profile, Grid& TX);
+
+  ///
+  template <typename GenMean>
+  void compute_reduced_thickness(GenMean gen_mean);
+
+  ///
+  std::function<void()> compute_reduced_thickness_;
+
+  ///
+  void compute_observables();
+
+  /// Normalization factor.
+  const double norm_;
+
+  /// Number of grid steps.
+  const int nsteps_;
+
+  /// Grid width and step size.
+  const double width_, dxy_;
+
   /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
-  Grid TA, TB, TR;
+  Grid TA_, TB_, TR_;
+
+  /// Center of mass coordinates.
+  double xcm_, ycm_;
+
+  /// Number of participants.
+  int npart_;
+
+  /// Multiplicity (total entropy).
+  double multiplicity_;
+
+  /// Eccentricity harmonics.
+  std::map<int, double> eccentricity_;
 };
-
-///
-using OutputFunctionVector = std::vector<std::function<void(const Event&)>>;
-
-///
-OutputFunctionVector create_output_functions(const VarMap& var_map);
 
 }  // namespace trento
 

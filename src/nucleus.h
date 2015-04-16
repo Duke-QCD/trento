@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "fwd_decl.h"
+#include "nucleon.h"
 
 namespace trento {
 
@@ -33,67 +34,26 @@ class Nucleus {
   virtual void sample_nucleons(double offset) = 0;
 
   ///
-  class NucleonData {
-    friend class Nucleus;
-
-   public:
-    ///
-    NucleonData() = default;
-
-    /// Disable all copy and move operations.
-    NucleonData(const NucleonData&) = delete;
-    NucleonData& operator=(const NucleonData&) = delete;
-    NucleonData(NucleonData&&) = delete;
-    NucleonData& operator=(NucleonData&&) = delete;
-
-    ///
-    double x() const
-    { return x_; }
-
-    ///
-    double y() const
-    { return y_; }
-
-    ///
-    bool is_participant() const
-    { return participant_; }
-
-    ///
-    void set_participant()
-    { participant_ = true; }
-
-   private:
-    ///
-    void set_position(double x, double y);
-
-    ///
-    double x_, y_;
-
-    ///
-    bool participant_ = false;
-  };
-
-  ///
-  using iterator = std::vector<NucleonData>::iterator;
-  using const_iterator = std::vector<NucleonData>::const_iterator;
+  using iterator = std::vector<Nucleon>::iterator;
+  using const_iterator = std::vector<Nucleon>::const_iterator;
 
   ///
   iterator begin() noexcept
-  { return nucleon_data_vector_.begin(); }
+  { return nucleons_.begin(); }
   iterator end() noexcept
-  { return nucleon_data_vector_.end(); }
+  { return nucleons_.end(); }
 
   ///
   const_iterator begin() const noexcept
-  { return nucleon_data_vector_.begin(); }
+  { return nucleons_.begin(); }
   const_iterator end() const noexcept
-  { return nucleon_data_vector_.end(); }
+  { return nucleons_.end(); }
 
   ///
   const_iterator cbegin() const noexcept
-  { return nucleon_data_vector_.cbegin(); }
+  { return nucleons_.cbegin(); }
   const_iterator cend() const noexcept
-  { return nucleon_data_vector_.cend(); }
+  { return nucleons_.cend(); }
 
  protected:
   ///
@@ -101,10 +61,10 @@ class Nucleus {
 
   ///
   template <typename... Args>
-  void set_nucleon_position(NucleonData& nucleon_data, Args&&... args);
+  void set_nucleon_position(Nucleon& nucleon, Args&&... args);
 
  private:
-  std::vector<NucleonData> nucleon_data_vector_;
+  std::vector<Nucleon> nucleons_;
 };
 
 ///

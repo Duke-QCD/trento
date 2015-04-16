@@ -4,116 +4,209 @@
 
 #include "event.h"
 
-#include <iomanip>
-#include <iostream>
+#include <algorithm>
+#include <cmath>
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
 #include <boost/program_options/variables_map.hpp>
+
+#include "nucleus.h"
 
 namespace trento {
 
-Event::Event(int grid_steps)
-    : TA(boost::extents[grid_steps][grid_steps]),
-      TB(boost::extents[grid_steps][grid_steps]),
-      TR(boost::extents[grid_steps][grid_steps])
-{}
-
 namespace {
 
-std::ostream& operator<<(std::ostream& os, const Event& event) {
-  using std::fixed;
-  using std::setprecision;
-  using std::setw;
-  using std::scientific;
+constexpr double TINY = 1e-12;
 
-  os << setprecision(10)       << event.num
-     << setw(15) << fixed      << event.impact_param
-     << setw(5)                << event.npart
-     << setw(18) << scientific << event.multiplicity
-     << fixed;
-
-  for (const auto& ecc : event.eccentricity)
-    os << setw(14)             << ecc.second;
-
-  return os << '\n';
+// Generalized mean for p > 0.
+// M_p(a, b) = (1/2*(a^p + b^p))^(1/p)
+inline double positive_pmean(double p, double a, double b) {
+  return std::pow(.5*(std::pow(a, p) + std::pow(b, p)), 1./p);
 }
 
-void write_text_file(const fs::path& path, const Event& event) {
-  fs::ofstream ofs{path};
+// Generalized mean for p < 0.
+// Same as the positive version, except prevents division by zero.
+inline double negative_pmean(double p, double a, double b) {
+  if (a < TINY || b < TINY)
+    return 0.;
+  return positive_pmean(p, a, b);
+}
 
-  // Write a commented header of event properties as key = value pairs.
-  ofs << std::setprecision(10)
-      << "# event "   << event.num          << '\n'
-      << "# b     = " << event.impact_param << '\n'
-      << "# npart = " << event.npart        << '\n'
-      << "# mult  = " << event.multiplicity << '\n';
-
-  for (const auto& ecc : event.eccentricity)
-    ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
-
-  // Write IC profile as a block grid.  Use C++ default float format (not
-  // fixed-width) so that trailing zeros are omitted.  This significantly
-  // increases output speed and saves disk space since many grid elements are
-  // zero.
-  for (const auto& row : event.TR) {
-    auto&& iter = row.begin();
-    // Write all row elements except the last with a space delimiter afterwards.
-    do {
-      ofs << *iter << ' ';
-    } while (++iter != --row.end());
-
-    // Write the last element and a linebreak.
-    ofs << *iter << '\n';
-  }
+// Generalized mean for p == 0.
+inline double geometric_mean(double a, double b) {
+  return std::sqrt(a*b);
 }
 
 }  // unnamed namespace
 
-OutputFunctionVector create_output_functions(const VarMap& var_map) {
-  OutputFunctionVector output_functions;
+Event::Event(const VarMap& var_map)
+    : norm_(var_map["normalization"].as<double>()),
+      nsteps_(var_map["grid-steps"].as<int>()),
+      width_(var_map["grid-width"].as<double>()),
+      dxy_(width_/nsteps_),
+      TA_(boost::extents[nsteps_][nsteps_]),
+      TB_(boost::extents[nsteps_][nsteps_]),
+      TR_(boost::extents[nsteps_][nsteps_]) {
+  // Set reduced thickness function based on configuraton.
+  auto p = var_map["reduced-thickness"].as<double>();
 
-  auto num_events = var_map["number-events"].as<int>();
-  auto event_num_width = static_cast<int>(std::ceil(std::log10(num_events)));
-
-  // Write to stdout unless the quiet option was specified.
-  if (!var_map["quiet"].as<bool>()) {
-    output_functions.emplace_back(
-      [event_num_width](const Event& event) {
-        std::cout << std::setw(event_num_width) << event;
-      }
-    );
+  // TODO: explain
+  if (std::fabs(p) < TINY) {
+    compute_reduced_thickness_ = [this]() {
+      compute_reduced_thickness(geometric_mean);
+    };
+  } else if (p > 0.) {
+    compute_reduced_thickness_ = [this, p]() {
+      compute_reduced_thickness(
+        [p](double a, double b) { return positive_pmean(p, a, b); });
+    };
+  } else {
+    compute_reduced_thickness_ = [this, p]() {
+      compute_reduced_thickness(
+        [p](double a, double b) { return negative_pmean(p, a, b); });
+    };
   }
+}
 
-  if (var_map.count("output")) {
-    auto output_path = var_map["output"].as<fs::path>();
-    if (output_path.has_extension() && (
-          output_path.extension() == ".hdf5" ||
-          output_path.extension() == ".hd5"  ||
-          output_path.extension() == ".h5"
-          )) {
-      throw std::runtime_error{"HDF5 not implemented yet"};  // TODO
-    } else {
-      if (fs::exists(output_path)) {
-        if (!fs::is_empty(output_path)) {
-          throw std::runtime_error{"output directory '" + output_path.string() +
-                                   "' must be empty"};
-        }
-      } else {
-        fs::create_directories(output_path);
+void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
+                    const NucleonProfile& profile) {
+  npart_ = 0;
+  compute_nuclear_thickness(nucleusA, profile, TA_);
+  compute_nuclear_thickness(nucleusB, profile, TB_);
+  compute_reduced_thickness_();
+  compute_observables();
+}
+
+namespace {
+
+// Limit a value to a range.
+// Used below to constrain grid indices.
+template <typename T>
+inline const T& clip(const T& value, const T& min, const T& max) {
+  if (value < min)
+    return min;
+  if (value > max)
+    return max;
+  return value;
+}
+
+}  // unnamed namespace
+
+void Event::compute_nuclear_thickness(
+    const Nucleus& nucleus, const NucleonProfile& profile, Grid& TX) {
+  // Wipe grid with zeros.
+  std::fill(TX.origin(), TX.origin() + TX.num_elements(), 0.);
+
+  const double r = profile.radius();
+
+  // Deposit each participant onto the grid.
+  for (const auto& nucleon : nucleus) {
+    if (!nucleon.is_participant())
+      continue;
+
+    ++npart_;
+
+    // Work in coordinates relative to (-width/2, -width/2).
+    double x = nucleon.x() + .5*width_;
+    double y = nucleon.y() + .5*width_;
+
+    // Determine min & max indices of nucleon subgrid.
+    int ixmin = clip(static_cast<int>((x-r)/dxy_), 0, nsteps_-1);
+    int iymin = clip(static_cast<int>((y-r)/dxy_), 0, nsteps_-1);
+    int ixmax = clip(static_cast<int>((x+r)/dxy_), 0, nsteps_-1);
+    int iymax = clip(static_cast<int>((y+r)/dxy_), 0, nsteps_-1);
+
+    double fluct = profile.sample_fluct();
+
+    // Add profile to grid.
+    for (auto iy = iymin; iy <= iymax; ++iy) {
+      double dysq = std::pow(y - (static_cast<double>(iy)+.5)*dxy_, 2);
+      for (auto ix = ixmin; ix <= ixmax; ++ix) {
+        double dxsq = std::pow(x - (static_cast<double>(ix)+.5)*dxy_, 2);
+        TX[iy][ix] += fluct * profile.thickness(dxsq + dysq);
       }
-      output_functions.emplace_back(
-        [output_path, event_num_width](const Event& event) {
-          std::ostringstream padded_fname{};
-          padded_fname << std::setw(event_num_width) << std::setfill('0')
-                       << event.num << ".dat";
-          write_text_file(output_path / padded_fname.str(), event);
-        }
-      );
+    }
+  }
+}
+
+template <typename GenMean>
+void Event::compute_reduced_thickness(GenMean gen_mean) {
+  double sum = 0.;
+  double xcm = 0.;
+  double ycm = 0.;
+
+  for (int iy = 0; iy < nsteps_; ++iy) {
+    for (int ix = 0; ix < nsteps_; ++ix) {
+      auto t = norm_ * gen_mean(TA_[iy][ix], TB_[iy][ix]);
+      TR_[iy][ix] = t;
+      sum += t;
+      xcm += t * static_cast<double>(ix);
+      ycm += t * static_cast<double>(iy);
     }
   }
 
-  return output_functions;
+  multiplicity_ = dxy_ * dxy_ * sum;
+  xcm_ = xcm / sum;
+  ycm_ = ycm / sum;
+}
+
+void Event::compute_observables() {
+  // Compute eccentricity.
+
+  // Simple helper class for use in the following loop.
+  struct EccentricityAccumulator {
+    double re = 0.;  // real part
+    double im = 0.;  // imaginary part
+    double wt = 0.;  // weight
+    double finish() const  // compute final eccentricity
+    { return std::sqrt(re*re + im*im) / std::fmax(wt, TINY); }
+  } e2, e3, e4, e5;
+
+  for (int iy = 0; iy < nsteps_; ++iy) {
+    for (int ix = 0; ix < nsteps_; ++ix) {
+      const auto& t = TR_[iy][ix];
+      if (t < TINY)
+        continue;
+
+      auto x = static_cast<double>(ix) - xcm_;
+      auto x2 = x*x;
+      auto x3 = x2*x;
+      auto x4 = x2*x2;
+
+      auto y = static_cast<double>(iy) - ycm_;
+      auto y2 = y*y;
+      auto y3 = y2*y;
+      auto y4 = y2*y2;
+
+      auto r2 = x2 + y2;
+      auto r = std::sqrt(r2);
+      auto r4 = r2*r2;
+
+      auto xy = x*y;
+      auto x2y2 = x2*y2;
+
+      // TODO: explain what is happening here
+      e2.re += t * (y2 - x2);
+      e2.im += t * 2.*xy;
+      e2.wt += t * r2;
+
+      e3.re += t * (y3 - 3.*y*x2);
+      e3.im += t * (3.*x*y2 - x3);
+      e3.wt += t * r2*r;
+
+      e4.re += t * (x4 + y4 - 6.*x2y2);
+      e4.im += t * 4.*xy*(y2 - x2);
+      e4.wt += t * r4;
+
+      e5.re += t * y*(5.*x4 - 10.*x2y2 + y4);
+      e5.im += t * x*(x4 - 10.*x2y2 + 5.*y4);
+      e5.wt += t * r4*r;
+    }
+  }
+
+  eccentricity_[2] = e2.finish();
+  eccentricity_[3] = e3.finish();
+  eccentricity_[4] = e4.finish();
+  eccentricity_[5] = e5.finish();
 }
 
 }  // namespace trento

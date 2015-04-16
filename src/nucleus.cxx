@@ -28,17 +28,11 @@ NucleusPtr Nucleus::create(const std::string& species) {
     throw std::invalid_argument{"unknown projectile species: " + species};
 }
 
-Nucleus::Nucleus(std::size_t A) : nucleon_data_vector_(A) {}
-
-void Nucleus::NucleonData::set_position(double x, double y) {
-  x_ = x;
-  y_ = y;
-  participant_ = false;
-}
+Nucleus::Nucleus(std::size_t A) : nucleons_(A) {}
 
 template <typename... Args>
-void Nucleus::set_nucleon_position(NucleonData& nucleon_data, Args&&... args) {
-  nucleon_data.set_position(std::forward<Args>(args)...);
+void Nucleus::set_nucleon_position(Nucleon& nucleon, Args&&... args) {
+  nucleon.set_position(std::forward<Args>(args)...);
 }
 
 Proton::Proton() : Nucleus(1) {}
@@ -68,7 +62,7 @@ double WoodsSaxonNucleus::radius() const {
 }
 
 void WoodsSaxonNucleus::sample_nucleons(double offset) {
-  for (auto&& nucleon_data : *this) {
+  for (auto&& nucleon : *this) {
     // Sample spherical radius from Woods-Saxon distribution.
     double r = woods_saxon_dist_(random::engine);
 
@@ -82,7 +76,7 @@ void WoodsSaxonNucleus::sample_nucleons(double offset) {
     double x = r_sin_theta * std::cos(phi) + offset;
     double y = r_sin_theta * std::sin(phi);
 
-    set_nucleon_position(nucleon_data, x, y);
+    set_nucleon_position(nucleon, x, y);
   }
   // XXX: re-center nucleon positions?
 }
