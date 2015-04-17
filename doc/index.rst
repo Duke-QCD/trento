@@ -10,9 +10,9 @@ User guide
 
    usage
 
-API reference
--------------
+Code internals
+--------------
 .. toctree::
    :maxdepth: 2
 
-   api/nucleon
+   classes

@@ -11,14 +11,28 @@
 
 namespace trento {
 
-/// Fast exponential approximation using the Taylor expansion.
+/// Fast exponential approximation, to be used as a drop-in replacement for
+/// \c std::exp when it will be evaluated many times within a fixed range.
+/// Works by pre-tabulating exp() values and exploiting the leading-order Taylor
+/// expansion; for step size \f$dx\f$ the error is \f$\mathcal O(dx^2)\f$.
+///
+/// \rst
+///
+/// Example::
+///
+///   FastExp<double> fast_exp{0., 1., 11};  // tabulate at 0.0, 0.1, 0.2, ...
+///   fast_exp(0.50);  // evaluate at table point -> exact result
+///   fast_exp(0.55);  // midway between points -> worst-case error
+///
+/// \endrst
 template <typename T = double>
 class FastExp {
  public:
-  ///
+  /// Pre-tabulate exp() values from \c xmin to \c xmax in \c nsteps
+  /// evenly-spaced intervals.
   FastExp(T xmin, T xmax, std::size_t nsteps);
 
-  /// Evaluate the exponential at x.
+  /// Evaluate the exponential at \em x (must be within range).
   T operator()(T x) const;
 
  private:

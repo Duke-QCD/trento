@@ -1,3 +1,0 @@
-Nucleon
-=======
-.. doxygenclass:: trento::Nucleon

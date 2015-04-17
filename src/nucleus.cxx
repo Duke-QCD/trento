@@ -16,8 +16,9 @@
 
 namespace trento {
 
-/// Woods-Saxon parameters from http://inspirehep.net/record/786828.
 NucleusPtr Nucleus::create(const std::string& species) {
+  // W-S params ref. given in WoodsSaxonNucleus class def.
+  // XXX: remember to add new species to the help output in main()
   if (species == "p")
     return NucleusPtr{new Proton{}};
   else if (species == "Au")
@@ -46,9 +47,13 @@ void Proton::sample_nucleons(double offset) {
   set_nucleon_position(*begin(), offset,  0.);
 }
 
-/// Extend Woods-Saxon distribution out to R + 10a.
-/// For typical values of (R, a), the probability of sampling a nucleon beyond
-/// this radius is O(10^-5).
+/// The Woods-Saxon distribution is
+/// \f[
+///   f(r) \propto \frac{1}{1 + \exp(\frac{r-R}{a})}.
+/// \f]
+/// Extend it out to \f$R + 10a\f$; for typical values of \f$(R, a)\f$, the
+/// probability of sampling a nucleon beyond this radius is
+/// \f$\mathcal O(10^{-5})\f$.
 WoodsSaxonNucleus::WoodsSaxonNucleus(std::size_t A, double R, double a)
     : Nucleus(A),
       R_(R),

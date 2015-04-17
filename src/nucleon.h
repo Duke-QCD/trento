@@ -13,26 +13,25 @@ namespace trento {
 
 class Nucleon;
 
-///
+/// Encapsulates properties shared by all nucleons:
+/// transverse thickness profile, cross section, fluctuations.
+/// Responsible for sampling nucleon-nucleon participation with given
+/// \f$\sigma_{NN}\f$.
+// XXX: why a separate class?
 class NucleonProfile {
  public:
-  /// \brief Initialize nucleon profile parameters, in particular determine
+  /// Initialize a profile from the configuration, in particular determine
   /// \c cross_sec_param_.
-  ///
-  /// \param var_map Must contain keys
-  /// \c "nucleon-width",
-  /// \c "fluctation",
-  /// \c "beam-energy",
-  /// \c "cross-section".
   explicit NucleonProfile(const VarMap& var_map);
 
   /// The radius at which the nucleon profile is truncated.
   double radius() const;
 
-  /// Calculate the thickness function.
+  /// Compute the thickness function at a (squared) distance from the profile
+  /// center.
   double thickness(double distance_squared) const;
 
-  /// Randomly determine nucleon-nucleon participation.
+  /// Randomly determine if a pair of nucleons participates.
   bool participate(Nucleon& A, Nucleon& B) const;
 
   /// Sample a random nucleon fluctuation.
@@ -61,36 +60,42 @@ class NucleonProfile {
   double cross_sec_param_;
 };
 
-///
+/// Represents a single nucleon.  Stores its transverse position and whether or
+/// not it's a participant.  These properties are globally readable, but can
+/// only be set through \c Nucleus and \c NucleonProfile.
 class Nucleon {
  public:
-  ///
+  /// Only a default constructor is necessary\---the class is designed to be
+  /// contsructed once and repeatedly updated.
   Nucleon() = default;
 
-  ///
+  /// The transverse \em x position.
   double x() const;
 
-  ///
+  /// The transverse \em y position.
   double y() const;
 
-  ///
+  /// Whether or not this nucleon is a participant.
   bool is_participant() const;
 
  private:
-  ///
+  /// A \c Nucleus must be able to set its \c Nucleon positions.
   friend class Nucleus;
+
+  /// The \c NucleonProfile samples participants so must be able to set
+  /// participation status.
   friend bool NucleonProfile::participate(Nucleon&, Nucleon&) const;
 
-  ///
+  /// Set the transverse position.
   void set_position(double x, double y);
 
-  ///
+  /// Mark as a participant.
   void set_participant();
 
-  ///
+  /// Internal storage of the transverse position.
   double x_, y_;
 
-  ///
+  /// Internal storage of participant status.
   bool participant_;
 };
 
@@ -131,7 +136,7 @@ inline double NucleonProfile::thickness(double distance_squared) const {
 }
 
 inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
-  // Nothing to do.
+  // If both nucleons are already participants, there's nothing to do.
   if (A.is_participant() && B.is_participant())
     return true;
 
@@ -139,7 +144,8 @@ inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
   double dy = A.y() - B.y();
   double distance_squared = dx*dx + dy*dy;
 
-  // Out of range.
+  // If distance > 2R, the nucleons are out of range and the participation
+  // probability vanishes.
   if (distance_squared > 4.*trunc_radius_squared_)
     return false;
 
@@ -150,6 +156,7 @@ inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
   auto prob = -std::expm1(
       -std::exp(cross_sec_param_ - .25*distance_squared/width_squared_));
 
+  // Sample one random number and decide if this pair participates.
   if (prob > random::canonical<>()) {
     A.set_participant();
     B.set_participant();

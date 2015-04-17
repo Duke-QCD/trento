@@ -4,17 +4,17 @@
 
 #include "../src/nucleon.h"
 
-#include <algorithm>
 #include <cmath>
 
 #include "catch.hpp"
 #include "util.h"
 
+#include "../src/nucleus.h"
 #include "../src/random.h"
 
 using namespace trento;
 
-TEST_CASE( "nucleon properties" ) {
+TEST_CASE( "nucleon" ) {
   auto fluct = 1. + .5*random::canonical<>();
   auto xsec = 4. + 3.*random::canonical<>();
   auto width = .5 + .2*random::canonical<>();
@@ -26,47 +26,72 @@ TEST_CASE( "nucleon properties" ) {
       {"nucleon-width", width},
   });
 
-  Nucleon nucleon{var_map};
+  NucleonProfile profile{var_map};
 
   // truncation radius
-  auto R = nucleon.radius();
+  auto R = profile.radius();
   CHECK( R == Approx(5*width) );
 
   // thickness function
-  CHECK( nucleon.thickness(0.) == Approx(1/wsq) );
-  CHECK( nucleon.thickness(wsq) == Approx(1/wsq*std::exp(-.5)) );
+  CHECK( profile.thickness(0.) == Approx(1/wsq) );
+  CHECK( profile.thickness(wsq) == Approx(1/wsq*std::exp(-.5)) );
 
   // random point inside radius
   auto dsq = std::pow(R*random::canonical<>(), 2);
-  CHECK( nucleon.thickness(dsq) == Approx(1/wsq*std::exp(-.5*dsq/wsq)) );
+  CHECK( profile.thickness(dsq) == Approx(1/wsq*std::exp(-.5*dsq/wsq)) );
 
   // random point outside radius
   dsq = std::pow(R*(1+random::canonical<>()), 2);
-  CHECK( nucleon.thickness(dsq) == 0. );
-
-  // cross section
-  // min-bias impact params
-  auto bsqmax = std::pow(1.1*2*R, 2);
-  auto nev = 1e6;
-  auto count = 0;
-  for (auto i = 0; i < static_cast<int>(nev); ++i)
-    if (nucleon.participate(bsqmax*random::canonical<>()))
-      ++count;
-
-  auto xsec_mc = M_PI*bsqmax * static_cast<double>(count)/nev;
-
-  // precision is better than this, but let's be conservative
-  CHECK( xsec_mc == Approx(xsec).epsilon(.02) );
+  CHECK( profile.thickness(dsq) == 0. );
 
   // fluctuations
   // just check they have unit mean -- the rest is handled by the C++ impl.
   auto total = 0.;
   auto n = 1e6;
   for (auto i = 0; i < static_cast<int>(n); ++i)
-    total += nucleon.fluctuate();
+    total += profile.sample_fluct();
 
   auto mean = total/n;
   CHECK( mean == Approx(1.).epsilon(.002) );
+
+  // must use a Nucleus to set Nucleon position
+  // Proton conveniently sets a deterministic position
+  // a mock class would be better but this works fine
+  Proton A{}, B{};
+  A.sample_nucleons(0.);
+  B.sample_nucleons(0.);
+  auto& nA = *A.begin();
+  auto& nB = *B.begin();
+  CHECK( nA.x() == 0. );
+  CHECK( nA.y() == 0. );
+  CHECK( !nA.is_participant() );
+
+  // wait until the nucleons participate
+  while (!profile.participate(nA, nB)) {}
+  CHECK( nA.is_participant() );
+  CHECK( nB.is_participant() );
+
+  // resampling nucleons resets participant state
+  A.sample_nucleons(0.);
+  CHECK( !nA.is_participant() );
+
+  // test cross section
+  // min-bias impact params
+  auto bmax = 1.1*2*R;
+  auto nev = 1e6;
+  auto count = 0;
+  for (auto i = 0; i < static_cast<int>(nev); ++i) {
+    auto b = bmax * std::sqrt(random::canonical<>());
+    A.sample_nucleons(.5*b);
+    B.sample_nucleons(-.5*b);
+    if (profile.participate(nA, nB))
+      ++count;
+  }
+
+  auto xsec_mc = M_PI*bmax*bmax * static_cast<double>(count)/nev;
+
+  // precision is better than this, but let's be conservative
+  CHECK( xsec_mc == Approx(xsec).epsilon(.02) );
 
   // nucleon width too small
   auto bad_var_map = make_var_map({
@@ -74,5 +99,5 @@ TEST_CASE( "nucleon properties" ) {
       {"cross-section", 5.},
       {"nucleon-width", .1},
   });
-  CHECK_THROWS_AS( Nucleon nucleon{bad_var_map}, std::domain_error );
+  CHECK_THROWS_AS( NucleonProfile prof{bad_var_map}, std::domain_error );
 }

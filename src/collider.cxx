@@ -71,6 +71,7 @@ void Collider::run_events() {
 double Collider::sample_impact_param() {
   double b;
   bool collision = false;
+
   while (!collision) {
     b = bmin_ + (bmax_ - bmin_) * std::sqrt(random::canonical<>());
 
@@ -79,8 +80,7 @@ double Collider::sample_impact_param() {
 
     for (auto&& A : *nucleusA_) {
       for (auto&& B : *nucleusB_) {
-        if (nucleon_profile_.participate(A, B))
-          collision = true;
+        collision = nucleon_profile_.participate(A, B) || collision;
       }
     }
   }

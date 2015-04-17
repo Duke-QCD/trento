@@ -15,21 +15,7 @@
 
 using namespace trento;
 
-TEST_CASE( "nucleon data" ) {
-
-  Nucleus::NucleonData nucleon_data{};
-
-  // should not be a participant initially
-  CHECK( !nucleon_data.is_participant() );
-
-  // set and retrieve participant
-  nucleon_data.set_participant();
-  CHECK( nucleon_data.is_participant() );
-
-}
-
 TEST_CASE( "proton" ) {
-
   auto nucleus = Nucleus::create("p");
 
   // proton contains one nucleon
@@ -50,21 +36,12 @@ TEST_CASE( "proton" ) {
 
   // not a participant initially
   CHECK( !proton.is_participant() );
-
-  // set as participant
-  proton.set_participant();
-  CHECK( proton.is_participant() );
-
-  // resampling nucleons resets participant state
-  nucleus->sample_nucleons(0.);
-  CHECK( !proton.is_participant() );
 }
 
 TEST_CASE( "lead nucleus" ) {
-
   auto nucleus = Nucleus::create("Pb");
 
-  int A = 208;
+  constexpr int A = 208;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
   CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
 
@@ -92,23 +69,19 @@ TEST_CASE( "lead nucleus" ) {
         return n.is_participant();
       });
   CHECK( !initial_participants );
-
 }
 
 TEST_CASE( "gold nucleus" ) {
-
   auto nucleus = Nucleus::create("Au");
 
-  int A = 197;
+  constexpr int A = 197;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
   CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
 
   CHECK( nucleus->radius() > 6. );
-
 }
 
 TEST_CASE( "woods-saxon sampling" ) {
-
   int A = 200;
   double R = 6., a = .5;
   NucleusPtr nucleus{new WoodsSaxonNucleus{static_cast<std::size_t>(A), R, a}};
