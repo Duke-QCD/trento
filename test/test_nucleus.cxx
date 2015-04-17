@@ -81,6 +81,20 @@ TEST_CASE( "gold nucleus" ) {
   CHECK( nucleus->radius() > 6. );
 }
 
+TEST_CASE( "uranium nucleus" ) {
+  auto nucleus = Nucleus::create("U");
+
+  constexpr int A = 238;
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
+  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
+
+  CHECK( nucleus->radius() > 8. );
+
+  nucleus->sample_nucleons(0.);
+
+  // TODO: test this more stringently
+}
+
 TEST_CASE( "woods-saxon sampling" ) {
   int A = 200;
   double R = 6., a = .5;

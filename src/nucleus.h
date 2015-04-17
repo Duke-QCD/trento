@@ -92,36 +92,35 @@ class Nucleus {
   std::vector<Nucleon> nucleons_;
 };
 
-/// A \c Proton is a trivial \c Nucleus with a single \c Nucleon.
+/// Trivial nucleus with a single nucleon.
 class Proton : public Nucleus {
  public:
   /// Default constructor.
   Proton();
 
-  /// Always zero.
   virtual double radius() const override;
 
-  /// Will always place the nucleon at (x, y) = (offset, 0).
   virtual void sample_nucleons(double offset) override;
 };
 
-/// Samples nucleons from a spherically symmetric Woods-Saxon distribution.
+/// Samples nucleons from a spherically symmetric Woods-Saxon distribution
+/// \f[
+///   f(r) \propto \frac{1}{1 + \exp(\frac{r-R}{a})}.
+/// \f]
 /// For non-deformed heavy nuclei such as lead.
-/// Woods-Saxon parameters from http://inspirehep.net/record/786828.
+///
+/// Woods-Saxon parameters from the PHOBOS Glauber model:
+///   - http://inspirehep.net/record/786828
+///   - http://inspirehep.net/record/1310629
 class WoodsSaxonNucleus : public Nucleus {
  public:
-  /// \brief Create a nucleus with \em A nucleons and Woods-Saxon parameters
-  /// \em R, \em a.
+  /// \param A number of nucleons
+  /// \param R Woods-Saxon radius
+  /// \param a Woods-Saxon surface thickness
   WoodsSaxonNucleus(std::size_t A, double R, double a);
 
-  /// The returned radius will actually be somewhat smaller than the true
-  /// maximum radius, because the Woods-Saxon dist falls off very rapidly
-  /// (exponentially).  Since the radius determines the impact parameter range,
-  /// if it reported the true maximum, far too many events would have no
-  /// participants.
   virtual double radius() const override;
 
-  /// Sample uncorrelated Woods-Saxon nucleon positions.
   virtual void sample_nucleons(double offset) override;
 
  private:
@@ -132,6 +131,41 @@ class WoodsSaxonNucleus : public Nucleus {
   /// CDF, approximate it as a piecewise linear dist.  For a large number of
   /// steps this is very accurate.
   mutable std::piecewise_linear_distribution<double> woods_saxon_dist_;
+};
+
+/// Samples nucleons from a deformed spheroidal Woods-Saxon distribution
+/// \f[
+///   f(r, \theta) \propto
+///   \frac{1}{1 + \exp(\frac{r-R(1+\beta_2Y_{20}+\beta_4Y_{40})}{a})}.
+/// \f]
+/// For deformed heavy nuclei such as uranium.
+///
+/// Woods-Saxon parameters from the PHOBOS Glauber model:
+///   - http://inspirehep.net/record/786828
+///   - http://inspirehep.net/record/1310629
+class DeformedWoodsSaxonNucleus : public Nucleus {
+ public:
+  /// \param A number of nucleons
+  /// \param R Woods-Saxon radius
+  /// \param a Woods-Saxon surface thickness
+  /// \param beta2 Woods-Saxon deformation parameter
+  /// \param beta4 Woods-Saxon deformation parameter
+  DeformedWoodsSaxonNucleus(std::size_t A, double R, double a,
+                            double beta2, double beta4);
+
+  virtual double radius() const override;
+
+  virtual void sample_nucleons(double offset) override;
+
+ private:
+  /// Evaluate the deformed Woods-Saxon distribution.
+  double deformed_woods_saxon_dist(double r, double cos_theta) const;
+
+  /// W-S parameters.
+  const double R_, a_, beta2_, beta4_;
+
+  /// Maximum radius.
+  const double rmax_;
 };
 
 }  // namespace trento

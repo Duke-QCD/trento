@@ -15,6 +15,8 @@ Nucleus types
 
 .. doxygenclass:: trento::WoodsSaxonNucleus
 
+.. doxygenclass:: trento::DeformedWoodsSaxonNucleus
+
 Nucleon
 -------
 .. doxygenclass:: trento::Nucleon
