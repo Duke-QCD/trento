@@ -1,6 +1,15 @@
 Class list
 ==========
 
+Collider
+--------
+.. doxygenclass:: trento::Collider
+   :members: Collider, run_events
+
+Event
+-----
+.. doxygenclass:: trento::Event
+
 Nucleus
 -------
 .. doxygenfunction:: trento::Nucleus::create

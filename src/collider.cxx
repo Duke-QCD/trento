@@ -58,6 +58,7 @@ Collider::Collider(const VarMap& var_map)
     random::engine.seed(static_cast<random::Engine::result_type>(seed));
 }
 
+// See header for explanation.
 Collider::~Collider() = default;
 
 void Collider::run_events() {
@@ -69,10 +70,13 @@ void Collider::run_events() {
 }
 
 double Collider::sample_impact_param() {
+  // Sample min-bias impact parameters until at least one nucleon-nucleon pair
+  // participates.  The bool 'collision' keeps track -- it is effectively a
+  // logical OR over all possible participant pairs.
   double b;
   bool collision = false;
 
-  while (!collision) {
+  do {
     b = bmin_ + (bmax_ - bmin_) * std::sqrt(random::canonical<>());
 
     nucleusA_->sample_nucleons(asymmetry_ * b);
@@ -83,7 +87,7 @@ double Collider::sample_impact_param() {
         collision = nucleon_profile_.participate(A, B) || collision;
       }
     }
-  }
+  } while (!collision);
 
   return b;
 }

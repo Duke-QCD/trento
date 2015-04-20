@@ -89,6 +89,9 @@ void WoodsSaxonNucleus::sample_nucleons(double offset) {
   // XXX: re-center nucleon positions?
 }
 
+// Set rmax like the non-deformed case (R + 10a), but for the maximum
+// "effective" radius.  The numerical coefficients for beta2 and beta4 are the
+// approximate values of Y20 and Y40 at theta = 0.
 DeformedWoodsSaxonNucleus::DeformedWoodsSaxonNucleus(
     std::size_t A, double R, double a, double beta2, double beta4)
     : Nucleus(A),
@@ -96,7 +99,7 @@ DeformedWoodsSaxonNucleus::DeformedWoodsSaxonNucleus(
       a_(a),
       beta2_(beta2),
       beta4_(beta4),
-      rmax_(R + 10.*a + beta2 + beta4)
+      rmax_(R*(1. + .63*std::fabs(beta2) + .85*std::fabs(beta4)) + 10.*a)
 {}
 
 /// Return something a bit smaller than the true maximum radius.
@@ -104,7 +107,7 @@ DeformedWoodsSaxonNucleus::DeformedWoodsSaxonNucleus(
 /// radius determines the impact parameter range, the true maximum radius would
 /// cause far too many events with zero participants.
 double DeformedWoodsSaxonNucleus::radius() const {
-  return rmax_ - 3.*a_;
+  return rmax_ - 7.*a_;
 }
 
 double DeformedWoodsSaxonNucleus::deformed_woods_saxon_dist(
@@ -112,10 +115,9 @@ double DeformedWoodsSaxonNucleus::deformed_woods_saxon_dist(
   auto cos_theta_sq = cos_theta*cos_theta;
 
   // spherical harmonics
-  auto Y20 = std::sqrt(5)/4. * math::double_constants::one_div_root_pi *
-             (3.*cos_theta_sq - 1.);
-
-  auto Y40 = 3./16. * math::double_constants::one_div_root_pi *
+  using math::double_constants::one_div_root_pi;
+  auto Y20 = std::sqrt(5)/4. * one_div_root_pi * (3.*cos_theta_sq - 1.);
+  auto Y40 = 3./16. * one_div_root_pi *
              (35.*cos_theta_sq*cos_theta_sq - 30.*cos_theta_sq + 3.);
 
   // "effective" radius

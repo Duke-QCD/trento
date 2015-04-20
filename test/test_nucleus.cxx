@@ -89,10 +89,6 @@ TEST_CASE( "uranium nucleus" ) {
   CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
 
   CHECK( nucleus->radius() > 8. );
-
-  nucleus->sample_nucleons(0.);
-
-  // TODO: test this more stringently
 }
 
 TEST_CASE( "woods-saxon sampling" ) {
@@ -164,6 +160,45 @@ TEST_CASE( "woods-saxon sampling" ) {
   }
   INFO( bin_output.str() );
   CHECK( all_bins_correct );
+}
+
+TEST_CASE( "deformed woods-saxon sampling" ) {
+  // This is tough to test because the sampled positions are randomly rotated
+  // and the z-coordinate is discarded.  However, the authors have visually
+  // checked the results by histogramming the samples (not done here, but easy
+  // to reproduce).
+
+  // As a not-very-stringent test, check that the mean ellipticity of a deformed
+  // W-S nucleus is significantly larger than a symmetric nucleus.
+
+  std::size_t A = 200;
+  double R = 6., a = .5, beta2 = .3, beta4 = .1;
+
+  auto nucleus_sym = WoodsSaxonNucleus{A, R, a};
+  auto nucleus_def = DeformedWoodsSaxonNucleus{A, R, a, beta2, beta4};
+
+  auto mean_ecc2 = [](Nucleus& nucleus) {
+    double e2 = 0.;
+    int nevents = 500;
+
+    for (int n = 0; n < nevents; ++n) {
+      nucleus.sample_nucleons(0.);
+      double numer = 0.;
+      double denom = 0.;
+      for (const auto& nucleon : nucleus) {
+        double x2 = std::pow(nucleon.x(), 2);
+        double y2 = std::pow(nucleon.y(), 2);
+        numer += x2 - y2;
+        denom += x2 + y2;
+      }
+
+      e2 += std::fabs(numer) / denom;
+    }
+
+    return e2 / nevents;
+  };
+
+  CHECK( mean_ecc2(nucleus_def) > 2.*mean_ecc2(nucleus_sym) );
 }
 
 TEST_CASE( "unknown nucleus species" ) {

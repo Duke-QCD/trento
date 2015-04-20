@@ -19,48 +19,86 @@ namespace trento {
 
 class NucleonProfile;
 
+/// The primary computation class, responsible for constructing nuclear
+/// thickness functions and calculating event observables.  An \c Event is
+/// designed to be created once and used many times by repeatedly calling \c
+/// compute().  The class stores its observables internally and provides
+/// inspector methods.
 ///
+/// \rst
+///
+/// Example::
+///
+///   Event event{var_map};
+///   for (int n = 0; n < nevents; ++n) {
+///     event.compute(nucleusA, nucleusB, nucleon_profile);
+///     do_something(
+///       event.npart(),
+///       event.multiplicity(),
+///       event.eccentricity(),
+///       event.reduced_thickness_grid()
+///     );
+///   }
+///
+/// \endrst
 class Event {
  public:
-  ///
+  /// Instantiate from the configuration.
   explicit Event(const VarMap& var_map);
 
-  ///
+  /// Compute thickness functions and event observables for a pair of \c Nucleus
+  /// objects and a \c NucleonProfile.  The nuclei must have already sampled
+  /// nucleon positions and participants before passing to this function..
   void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
                const NucleonProfile& profile);
 
-  /// Alias for a two-dimensional thickness grid.
+  // Alias for a two-dimensional thickness grid.
   using Grid = boost::multi_array<double, 2>;
 
-  ///
+  /// Number of nucleon participants.
   const int& npart() const
   { return npart_; }
 
-  ///
+  /// Multiplicity -- or more specifically, total entropy.  May be interpreted
+  /// as \f$dS/dy\f$ or \f$dS/d\eta\f$ at midrapidity.
   const double& multiplicity() const
   { return multiplicity_; }
 
+  /// Eccentricity harmonics \f$\varepsilon_n\f$ for \em n = 2\--5.
+  /// Returns a map of \f$(n : \varepsilon_n)\f$ pairs, so e.g.:
+  /// \rst
+  /// ::
   ///
+  ///   double e2 = event.eccentricity()[2];
+  ///
+  /// \endrst
   const std::map<int, double>& eccentricity() const
   { return eccentricity_; }
 
-  ///
+  /// The reduced thickness grid as a square two-dimensional array.
   const Grid& reduced_thickness_grid() const
   { return TR_; }
 
  private:
-  ///
+  /// Compute a nuclear thickness function (TA or TB) onto a grid for a given
+  /// nucleus and nucleon profile.  This destroys any data previously contained
+  /// by the grid.
   void compute_nuclear_thickness(
       const Nucleus& nucleus, const NucleonProfile& profile, Grid& TX);
 
-  ///
+  /// Compute the reduced thickness function (TR) after computing TA and TB.
+  /// Template parameter GenMean sets the actual function that returns TR(TA, TB).
+  /// It is determined at runtime based on the configuration.
   template <typename GenMean>
   void compute_reduced_thickness(GenMean gen_mean);
 
-  ///
+  /// An instantation of compute_reduced_thickness<GenMean> with a bound
+  /// argument for GenMean.  Created in the ctor.  Implemented this way to
+  /// allow the compiler to fully inline the GenMean function and only require a
+  /// single "virtual" function call per event.
   std::function<void()> compute_reduced_thickness_;
 
-  ///
+  /// Compute observables that require a second pass over the reduced thickness grid.
   void compute_observables();
 
   /// Normalization factor.

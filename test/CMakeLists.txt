@@ -36,6 +36,7 @@ add_executable(${TEST_EXE} EXCLUDE_FROM_ALL
   catch.hpp
   catch.cxx
   util.cxx
+  test_event.cxx
   test_fast_exp.cxx
   test_nucleon.cxx
   test_nucleus.cxx

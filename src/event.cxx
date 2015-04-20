@@ -46,10 +46,11 @@ Event::Event(const VarMap& var_map)
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
       TR_(boost::extents[nsteps_][nsteps_]) {
-  // Set reduced thickness function based on configuraton.
+  // Choose which version of the generalized mean to use based on the
+  // configuration.  The possibilities are defined above.  See the header for
+  // more information.
   auto p = var_map["reduced-thickness"].as<double>();
 
-  // TODO: explain
   if (std::fabs(p) < TINY) {
     compute_reduced_thickness_ = [this]() {
       compute_reduced_thickness(geometric_mean);
@@ -69,6 +70,7 @@ Event::Event(const VarMap& var_map)
 
 void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
                     const NucleonProfile& profile) {
+  // Reset npart; compute_nuclear_thickness() increments it.
   npart_ = 0;
   compute_nuclear_thickness(nucleusA, profile, TA_);
   compute_nuclear_thickness(nucleusB, profile, TB_);
@@ -93,6 +95,13 @@ inline const T& clip(const T& value, const T& min, const T& max) {
 
 void Event::compute_nuclear_thickness(
     const Nucleus& nucleus, const NucleonProfile& profile, Grid& TX) {
+  // Construct the thickness grid by looping over participants and adding each
+  // to a small subgrid within its radius.  Compared to the other possibility
+  // (grid cells as the outer loop and participants as the inner loop), this
+  // reduces the number of required distance-squared calculations by a factor of
+  // ~20 (depending on the nucleon size).  The Event unit test verifies that the
+  // two methods agree.
+
   // Wipe grid with zeros.
   std::fill(TX.origin(), TX.origin() + TX.num_elements(), 0.);
 
@@ -167,6 +176,7 @@ void Event::compute_observables() {
       if (t < TINY)
         continue;
 
+      // Compute (x, y) relative to the CM and cache powers of x, y, r.
       auto x = static_cast<double>(ix) - xcm_;
       auto x2 = x*x;
       auto x3 = x2*x;
@@ -184,7 +194,32 @@ void Event::compute_observables() {
       auto xy = x*y;
       auto x2y2 = x2*y2;
 
-      // TODO: explain what is happening here
+      // The eccentricity harmonics are weighted averages of r^n*exp(i*n*phi)
+      // over the entropy profile (reduced thickness).  The naive way to compute
+      // exp(i*n*phi) at a given (x, y) point is essentially:
+      //
+      //   phi = arctan2(y, x)
+      //   real = cos(n*phi)
+      //   imag = sin(n*phi)
+      //
+      // However this implementation uses three unnecessary trig functions; a
+      // much faster method is to express the cos and sin directly in terms of x
+      // and y.  For example, it is trivial to show (by drawing a triangle and
+      // using rudimentary trig) that
+      //
+      //   cos(arctan2(y, x)) = x/r = x/sqrt(x^2 + y^2)
+      //   sin(arctan2(y, x)) = y/r = x/sqrt(x^2 + y^2)
+      //
+      // This is easily generalized to cos and sin of (n*phi) by invoking the
+      // multiple angle formula, e.g. sin(2x) = 2sin(x)cos(x), and hence
+      //
+      //   sin(2*arctan2(y, x)) = 2*sin(arctan2(y, x))*cos(arctan2(y, x))
+      //                        = 2*x*y / r^2
+      //
+      // Which not only eliminates the trig functions, but also naturally
+      // cancels the r^2 weight.  This cancellation occurs for all n.
+      //
+      // The Event unit test verifies that the two methods agree.
       e2.re += t * (y2 - x2);
       e2.im += t * 2.*xy;
       e2.wt += t * r2;
