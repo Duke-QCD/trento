@@ -31,5 +31,7 @@ TEST_CASE( "fast exponential" ) {
 
   CHECK( worst_err < tolerance );
 
+#ifndef NDEBUG
   CHECK_THROWS_AS( fast_exp(xmin - 1), std::out_of_range );
+#endif
 }
