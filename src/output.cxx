@@ -4,6 +4,7 @@
 
 #include "output.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -18,14 +19,18 @@ namespace trento {
 
 namespace {
 
-void write_stream(std::ostream& os,
+// These output functions are invoked by the Output class.
+
+void write_stream(std::ostream& os, int width,
     int num, double impact_param, const Event& event) {
   using std::fixed;
   using std::setprecision;
   using std::setw;
   using std::scientific;
 
-  os << setprecision(10)       << num
+  // Write a nicely-formatted line of event properties.
+  os << setprecision(10)
+     << setw(width)            << num
      << setw(15) << fixed      << impact_param
      << setw(5)                << event.npart()
      << setw(18) << scientific << event.multiplicity()
@@ -37,9 +42,13 @@ void write_stream(std::ostream& os,
   os << '\n';
 }
 
-void write_text_file(const fs::path& path,
+void write_text_file(const fs::path& output_dir, int width,
     int num, double impact_param, const Event& event) {
-  fs::ofstream ofs{path};
+  // Open a numbered file in the output directory.
+  // Pad the filename with zeros.
+  std::ostringstream padded_fname{};
+  padded_fname << std::setw(width) << std::setfill('0') << num << ".dat";
+  fs::ofstream ofs{output_dir / padded_fname.str()};
 
   // Write a commented header of event properties as key = value pairs.
   ofs << std::setprecision(10)
@@ -67,9 +76,23 @@ void write_text_file(const fs::path& path,
   }
 }
 
+// Determine if a filename is an HDF5 file based on the extension.
+bool is_hdf5(const fs::path& path) {
+  if (!path.has_extension())
+    return false;
+
+  auto hdf5_exts = {".hdf5", ".hdf", ".hd5", ".h5"};
+  auto result = std::find(hdf5_exts.begin(), hdf5_exts.end(), path.extension());
+
+  return result != hdf5_exts.end();
+}
+
 }  // unnamed namespace
 
 Output::Output(const VarMap& var_map) {
+  // Determine the required width (padding) of the event number.  For example if
+  // there are 10 events, the numbers are 0-9 and so no padding is necessary.
+  // However given 11 events, the numbers are 00-10 with padded 00, 01, ...
   auto nevents = var_map["number-events"].as<int>();
   auto width = static_cast<int>(std::ceil(std::log10(nevents)));
 
@@ -77,21 +100,21 @@ Output::Output(const VarMap& var_map) {
   if (!var_map["quiet"].as<bool>()) {
     writers_.emplace_back(
       [width](int num, double impact_param, const Event& event) {
-        std::cout << std::setw(width);
-        write_stream(std::cout, num, impact_param, event);
+        write_stream(std::cout, width, num, impact_param, event);
       }
     );
   }
 
+  // Possibly write to text or HDF5 files.
   if (var_map.count("output")) {
-    auto output_path = var_map["output"].as<fs::path>();
-    if (output_path.has_extension() && (
-          output_path.extension() == ".hdf5" ||
-          output_path.extension() == ".hd5"  ||
-          output_path.extension() == ".h5"
-          )) {
+    const auto& output_path = var_map["output"].as<fs::path>();
+    if (is_hdf5(output_path)) {
       throw std::runtime_error{"HDF5 not implemented yet"};  // TODO
     } else {
+      // Text files are all written into a single directory.  Require the
+      // directory to be initially empty to avoid accidental overwriting and/or
+      // spewing files into an already-used location.  If the directory does not
+      // exist, create it.
       if (fs::exists(output_path)) {
         if (!fs::is_empty(output_path)) {
           throw std::runtime_error{"output directory '" + output_path.string() +
@@ -102,11 +125,7 @@ Output::Output(const VarMap& var_map) {
       }
       writers_.emplace_back(
         [output_path, width](int num, double impact_param, const Event& event) {
-          std::ostringstream padded_fname{};
-          padded_fname << std::setw(width) << std::setfill('0')
-                       << num << ".dat";
-          write_text_file(output_path / padded_fname.str(),
-              num, impact_param, event);
+          write_text_file(output_path, width, num, impact_param, event);
         }
       );
     }

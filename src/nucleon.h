@@ -13,15 +13,14 @@ namespace trento {
 
 class Nucleon;
 
-/// Encapsulates properties shared by all nucleons:
-/// transverse thickness profile, cross section, fluctuations.
-/// Responsible for sampling nucleon-nucleon participation with given
-/// \f$\sigma_{NN}\f$.
-// XXX: why a separate class?
+/// \rst
+/// Encapsulates properties shared by all nucleons: transverse thickness
+/// profile, cross section, fluctuations.  Responsible for sampling
+/// nucleon-nucleon participation with given `\sigma_{NN}`.
+/// \endrst
 class NucleonProfile {
  public:
-  /// Initialize a profile from the configuration, in particular determine
-  /// \c cross_sec_param_.
+  /// Instantiate from the configuration.
   explicit NucleonProfile(const VarMap& var_map);
 
   /// The radius at which the nucleon profile is truncated.
@@ -52,17 +51,19 @@ class NucleonProfile {
   FastExp<double> fast_exp_;
 
   /// Fluctuation distribution.
-  /// \c mutable so that \c sample_fluct() can be \c const.
+  /// mutable so that sample_fluct() can be const.
   mutable std::gamma_distribution<double> fluct_dist_;
 
   /// Dimensionless parameter set to reproduce the inelastic nucleon-nucleon
-  /// cross section \f$\sigma_{NN}\f$.  Calculated in constructor.
+  /// cross section \sigma_{NN}.  Calculated in constructor.
   double cross_sec_param_;
 };
 
+/// \rst
 /// Represents a single nucleon.  Stores its transverse position and whether or
 /// not it's a participant.  These properties are globally readable, but can
-/// only be set through \c Nucleus and \c NucleonProfile.
+/// only be set through ``Nucleus`` and ``NucleonProfile``.
+/// \endrst
 class Nucleon {
  public:
   /// Only a default constructor is necessary\---the class is designed to be
@@ -79,14 +80,14 @@ class Nucleon {
   bool is_participant() const;
 
  private:
-  /// A \c Nucleus must be able to set its \c Nucleon positions.
+  /// A Nucleus must be able to set its Nucleon positions.
   friend class Nucleus;
 
-  /// The \c NucleonProfile samples participants so must be able to set
+  /// The NucleonProfile samples participants so must be able to set
   /// participation status.
   friend bool NucleonProfile::participate(Nucleon&, Nucleon&) const;
 
-  /// Set the transverse position.
+  /// Set the transverse position and reset participant status to false.
   void set_position(double x, double y);
 
   /// Mark as a participant.

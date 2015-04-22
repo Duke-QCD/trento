@@ -19,13 +19,11 @@ namespace trento {
 
 class NucleonProfile;
 
-/// The primary computation class, responsible for constructing nuclear
-/// thickness functions and calculating event observables.  An \c Event is
-/// designed to be created once and used many times by repeatedly calling \c
-/// compute().  The class stores its observables internally and provides
-/// inspector methods.
-///
 /// \rst
+/// The primary computation class, responsible for constructing nuclear
+/// thickness functions and calculating event observables.  Designed to be
+/// created once and used many times by repeatedly calling ``compute()``.
+/// Stores its observables internally and provides inspector methods.
 ///
 /// Example::
 ///
@@ -46,9 +44,12 @@ class Event {
   /// Instantiate from the configuration.
   explicit Event(const VarMap& var_map);
 
-  /// Compute thickness functions and event observables for a pair of \c Nucleus
-  /// objects and a \c NucleonProfile.  The nuclei must have already sampled
-  /// nucleon positions and participants before passing to this function..
+  /// \rst
+  /// Compute thickness functions and event observables for a pair of
+  /// ``Nucleus`` objects and a ``NucleonProfile``.  The nuclei must have
+  /// already sampled nucleon positions and participants before passing to this
+  /// function.
+  /// \endrst
   void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
                const NucleonProfile& profile);
 
@@ -59,17 +60,18 @@ class Event {
   const int& npart() const
   { return npart_; }
 
-  /// Multiplicity -- or more specifically, total entropy.  May be interpreted
-  /// as \f$dS/dy\f$ or \f$dS/d\eta\f$ at midrapidity.
+  /// \rst
+  /// Multiplicity---or more specifically, total entropy.  May be interpreted
+  /// as `dS/dy` or `dS/d\eta` at midrapidity.
+  /// \endrst
   const double& multiplicity() const
   { return multiplicity_; }
 
-  /// Eccentricity harmonics \f$\varepsilon_n\f$ for \em n = 2\--5.
-  /// Returns a map of \f$(n : \varepsilon_n)\f$ pairs, so e.g.:
   /// \rst
-  /// ::
+  /// Eccentricity harmonics `\varepsilon_n` for *n* = 2--5.
+  /// Returns a map of `(n : \varepsilon_n)` pairs, so e.g.::
   ///
-  ///   double e2 = event.eccentricity()[2];
+  ///   double e2 = event.eccentricity().at(2);
   ///
   /// \endrst
   const std::map<int, double>& eccentricity() const

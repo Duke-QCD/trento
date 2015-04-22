@@ -40,6 +40,7 @@ add_executable(${TEST_EXE} EXCLUDE_FROM_ALL
   test_fast_exp.cxx
   test_nucleon.cxx
   test_nucleus.cxx
+  test_output.cxx
 )
 target_link_libraries(${TEST_EXE} ${LIBRARY_NAME} ${Boost_LIBRARIES})
 

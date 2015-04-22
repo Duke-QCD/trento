@@ -34,7 +34,6 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
 
 }  // unnamed namespace
 
-/// \b TODO Derive the cross section parameter.
 NucleonProfile::NucleonProfile(const VarMap& var_map)
     : width_squared_(std::pow(var_map["nucleon-width"].as<double>(), 2)),
       trunc_radius_squared_(std::pow(trunc_widths_, 2) * width_squared_),
@@ -47,6 +46,8 @@ NucleonProfile::NucleonProfile(const VarMap& var_map)
     // auto sqrt_s = var_map["beam-energy"].as<double>();
     sigma_nn = 6.4;
   }
+
+  // TODO: derive the cross section parameter
 
   // Initialize arguments for boost root finding function.
 

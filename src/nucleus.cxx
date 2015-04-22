@@ -17,7 +17,7 @@
 namespace trento {
 
 NucleusPtr Nucleus::create(const std::string& species) {
-  // W-S params ref. given in WoodsSaxonNucleus class def.
+  // W-S params ref. in header
   // XXX: remember to add new species to the help output in main()
   if (species == "p")
     return NucleusPtr{new Proton{}};
@@ -60,10 +60,10 @@ WoodsSaxonNucleus::WoodsSaxonNucleus(std::size_t A, double R, double a)
         [R, a](double r) { return r*r/(1.+std::exp((r-R)/a)); })
 {}
 
-/// Return something a bit smaller than the true maximum radius.
-/// The Woods-Saxon dist falls off very rapidly (exponentially), and since this
-/// radius determines the impact parameter range, the true maximum radius would
-/// cause far too many events with zero participants.
+/// Return something a bit smaller than the true maximum radius.  The
+/// Woods-Saxon distribution falls off very rapidly (exponentially), and since
+/// this radius determines the impact parameter range, the true maximum radius
+/// would cause far too many events with zero participants.
 double WoodsSaxonNucleus::radius() const {
   return R_ + 3.*a_;
 }
@@ -102,10 +102,10 @@ DeformedWoodsSaxonNucleus::DeformedWoodsSaxonNucleus(
       rmax_(R*(1. + .63*std::fabs(beta2) + .85*std::fabs(beta4)) + 10.*a)
 {}
 
-/// Return something a bit smaller than the true maximum radius.
-/// The Woods-Saxon dist falls off very rapidly (exponentially), and since this
-/// radius determines the impact parameter range, the true maximum radius would
-/// cause far too many events with zero participants.
+/// Return something a bit smaller than the true maximum radius.  The
+/// Woods-Saxon distribution falls off very rapidly (exponentially), and since
+/// this radius determines the impact parameter range, the true maximum radius
+/// would cause far too many events with zero participants.
 double DeformedWoodsSaxonNucleus::radius() const {
   return rmax_ - 7.*a_;
 }

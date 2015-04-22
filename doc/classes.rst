@@ -10,6 +10,10 @@ Event
 -----
 .. doxygenclass:: trento::Event
 
+Output
+------
+.. doxygenclass:: trento::Output
+
 Nucleus
 -------
 .. doxygenfunction:: trento::Nucleus::create
@@ -20,10 +24,17 @@ Nucleus
 
 Nucleus types
 ~~~~~~~~~~~~~
+
+Proton
+''''''
 .. doxygenclass:: trento::Proton
 
+Woods-Saxon
+'''''''''''
 .. doxygenclass:: trento::WoodsSaxonNucleus
 
+Deformed Woods-Saxon
+''''''''''''''''''''
 .. doxygenclass:: trento::DeformedWoodsSaxonNucleus
 
 Nucleon

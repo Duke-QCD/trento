@@ -14,12 +14,11 @@
 
 namespace trento {
 
+/// \rst
 /// Orchestrates event generation and output.  Owns instances of several other
 /// TRENTO classes and knows how they work together.  Responsible for sampling
-/// impact parameters.  After instantiation, call \c run_events() to do
+/// impact parameters.  After instantiation, call ``run_events()`` to do
 /// everything.
-///
-/// \rst
 ///
 /// Example::
 ///
@@ -32,12 +31,12 @@ class Collider {
   /// Instantiate from the configuration.
   explicit Collider(const VarMap& var_map);
 
-  /// Declare a destructor to properly handle the \c std::unique_ptr<Nucleus>
-  /// members.  At this point in the code, \c Nucleus is an incomplete type so
-  /// the compiler does not know how to delete it.  Therefore the destructor is
-  /// defined (as default) in the implementation file, at which point \c Nucleus
-  /// is fully defined.  See e.g. Item 22 of Effective Modern C++ by Scott
-  /// Meyers and this stackoverflow answer: http://stackoverflow.com/a/6089065.
+  /// Declare a destructor to properly handle the std::unique_ptr<Nucleus>
+  /// members.  At this point in the code, Nucleus is an incomplete type so the
+  /// compiler does not know how to delete it.  Therefore the destructor is
+  /// defined (as default) in the implementation file, at which point Nucleus is
+  /// fully defined.  See e.g. Item 22 of Effective Modern C++ by Scott Meyers
+  /// and this stackoverflow answer: http://stackoverflow.com/a/6089065.
   ~Collider();
 
   /// Run events and output.

@@ -18,6 +18,3 @@ GENERATE_LATEX   = NO
 # shortcut to embed rst
 ALIASES          = "rst=\verbatim embed:rst:leading-asterisk" \
                    "endrst=\endverbatim"
-
-# doesn't work quite right with breathe
-AUTOLINK_SUPPORT = NO

@@ -11,12 +11,11 @@
 
 namespace trento {
 
-/// Fast exponential approximation, to be used as a drop-in replacement for
-/// \c std::exp when it will be evaluated many times within a fixed range.
-/// Works by pre-tabulating exp() values and exploiting the leading-order Taylor
-/// expansion; for step size \f$dx\f$ the error is \f$\mathcal O(dx^2)\f$.
-///
 /// \rst
+/// Fast exponential approximation, to be used as a drop-in replacement for
+/// ``std::exp`` when it will be evaluated many times within a fixed range.
+/// Works by pre-tabulating exp() values and exploiting the leading-order Taylor
+/// expansion; for step size `dx` the error is `\mathcal O(dx^2)`.
 ///
 /// Example::
 ///
