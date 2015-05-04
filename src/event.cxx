@@ -69,7 +69,7 @@ Event::Event(const VarMap& var_map)
 }
 
 void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
-                    const NucleonProfile& profile) {
+                    NucleonProfile& profile) {
   // Reset npart; compute_nuclear_thickness() increments it.
   npart_ = 0;
   compute_nuclear_thickness(nucleusA, profile, TA_);
@@ -94,7 +94,7 @@ inline const T& clip(const T& value, const T& min, const T& max) {
 }  // unnamed namespace
 
 void Event::compute_nuclear_thickness(
-    const Nucleus& nucleus, const NucleonProfile& profile, Grid& TX) {
+    const Nucleus& nucleus, NucleonProfile& profile, Grid& TX) {
   // Construct the thickness grid by looping over participants and adding each
   // to a small subgrid within its radius.  Compared to the other possibility
   // (grid cells as the outer loop and participants as the inner loop), this
@@ -124,14 +124,15 @@ void Event::compute_nuclear_thickness(
     int ixmax = clip(static_cast<int>((x+r)/dxy_), 0, nsteps_-1);
     int iymax = clip(static_cast<int>((y+r)/dxy_), 0, nsteps_-1);
 
-    double fluct = profile.sample_fluct();
+    // Prepare profile for new nucleon.
+    profile.fluctuate();
 
     // Add profile to grid.
     for (auto iy = iymin; iy <= iymax; ++iy) {
       double dysq = std::pow(y - (static_cast<double>(iy)+.5)*dxy_, 2);
       for (auto ix = ixmin; ix <= ixmax; ++ix) {
         double dxsq = std::pow(x - (static_cast<double>(ix)+.5)*dxy_, 2);
-        TX[iy][ix] += fluct * profile.thickness(dxsq + dysq);
+        TX[iy][ix] += profile.thickness(dxsq + dysq);
       }
     }
   }

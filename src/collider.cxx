@@ -33,7 +33,7 @@ double determine_bmax(const VarMap& var_map,
     const Nucleus& A, const Nucleus& B, const NucleonProfile& profile) {
   auto bmax = var_map["b-max"].as<double>();
   if (bmax < 0.)
-    bmax = A.radius() + B.radius() + 2.*profile.radius();
+    bmax = A.radius() + B.radius() + profile.max_impact();
   return bmax;
 }
 

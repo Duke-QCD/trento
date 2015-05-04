@@ -51,7 +51,7 @@ class Event {
   /// function.
   /// \endrst
   void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
-               const NucleonProfile& profile);
+               NucleonProfile& profile);
 
   // Alias for a two-dimensional thickness grid.
   using Grid = boost::multi_array<double, 2>;
@@ -86,7 +86,7 @@ class Event {
   /// nucleus and nucleon profile.  This destroys any data previously contained
   /// by the grid.
   void compute_nuclear_thickness(
-      const Nucleus& nucleus, const NucleonProfile& profile, Grid& TX);
+      const Nucleus& nucleus, NucleonProfile& profile, Grid& TX);
 
   /// Compute the reduced thickness function (TR) after computing TA and TB.
   /// Template parameter GenMean sets the actual function that returns TR(TA, TB).

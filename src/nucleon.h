@@ -5,6 +5,8 @@
 #ifndef NUCLEON_H
 #define NUCLEON_H
 
+#include <boost/math/constants/constants.hpp>
+
 #include "fast_exp.h"
 #include "fwd_decl.h"
 #include "random.h"
@@ -26,37 +28,46 @@ class NucleonProfile {
   /// The radius at which the nucleon profile is truncated.
   double radius() const;
 
+  /// The maximum impact parameter for participation.
+  double max_impact() const;
+
+  /// Randomly fluctuate the profile.  Should be called prior to evaluating the
+  /// thickness function for a new nucleon.
+  void fluctuate();
+
   /// Compute the thickness function at a (squared) distance from the profile
   /// center.
-  double thickness(double distance_squared) const;
+  double thickness(double distance_sqr) const;
 
   /// Randomly determine if a pair of nucleons participates.
   bool participate(Nucleon& A, Nucleon& B) const;
 
-  /// Sample a random nucleon fluctuation.
-  double sample_fluct() const;
-
  private:
-  /// Truncate the Gaussian at this number of widths.
-  // TODO: is this the optimal value?
-  static constexpr double trunc_widths_ = 5.;
-
   /// Width of Gaussian thickness function.
-  const double width_squared_;
+  const double width_sqr_;
 
   /// Truncate the Gaussian at this radius.
-  const double trunc_radius_squared_;
+  const double trunc_radius_sqr_;
 
-  /// Fast exponential for calculating the thickness profile.
-  FastExp<double> fast_exp_;
+  /// Maximum impact parameter for participants.
+  const double max_impact_sqr_;
 
-  /// Fluctuation distribution.
-  /// mutable so that sample_fluct() can be const.
-  mutable std::gamma_distribution<double> fluct_dist_;
+  /// Cache (-1/2w^2) for use in the thickness function exponential.
+  /// Yes, this actually makes a speed difference...
+  const double neg_one_div_two_width_sqr_;
 
   /// Dimensionless parameter set to reproduce the inelastic nucleon-nucleon
   /// cross section \sigma_{NN}.  Calculated in constructor.
-  double cross_sec_param_;
+  const double cross_sec_param_;
+
+  /// Fast exponential for calculating the thickness profile.
+  const FastExp<double> fast_exp_;
+
+  /// Fluctuation distribution.
+  std::gamma_distribution<double> fluct_dist_;
+
+  /// Thickness function prefactor = fluct/(2*pi*w^2)
+  double prefactor_;
 };
 
 /// \rst
@@ -67,7 +78,7 @@ class NucleonProfile {
 class Nucleon {
  public:
   /// Only a default constructor is necessary\---the class is designed to be
-  /// contsructed once and repeatedly updated.
+  /// constructed once and repeatedly updated.
   Nucleon() = default;
 
   /// The transverse \em x position.
@@ -100,6 +111,9 @@ class Nucleon {
   bool participant_;
 };
 
+// These functions are short, called very often, and account for a large
+// fraction of the total computation time, so request inlining.
+
 // Nucleon inline member functions
 
 inline double Nucleon::x() const {
@@ -127,13 +141,22 @@ inline void Nucleon::set_participant() {
 // NucleonProfile inline member functions
 
 inline double NucleonProfile::radius() const {
-  return std::sqrt(trunc_radius_squared_);
+  return std::sqrt(trunc_radius_sqr_);
 }
 
-inline double NucleonProfile::thickness(double distance_squared) const {
-  if (distance_squared > trunc_radius_squared_)
+inline double NucleonProfile::max_impact() const {
+  return std::sqrt(max_impact_sqr_);
+}
+
+inline void NucleonProfile::fluctuate() {
+  prefactor_ = fluct_dist_(random::engine) *
+     math::double_constants::one_div_two_pi / width_sqr_;
+}
+
+inline double NucleonProfile::thickness(double distance_sqr) const {
+  if (distance_sqr > trunc_radius_sqr_)
     return 0.;
-  return fast_exp_(-.5*distance_squared/width_squared_) / width_squared_;
+  return prefactor_ * fast_exp_(neg_one_div_two_width_sqr_*distance_sqr);
 }
 
 inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
@@ -143,32 +166,33 @@ inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
 
   double dx = A.x() - B.x();
   double dy = A.y() - B.y();
-  double distance_squared = dx*dx + dy*dy;
+  double distance_sqr = dx*dx + dy*dy;
 
-  // If distance > 2R, the nucleons are out of range and the participation
-  // probability vanishes.
-  if (distance_squared > 4.*trunc_radius_squared_)
+  // Check if nucleons are out of range.
+  if (distance_sqr > max_impact_sqr_)
     return false;
 
   // The probability is
   //   P = 1 - exp(...)
-  // which can be calculated using std::expm1
-  //   expm1() = exp() - 1 = -(1 - exp())
-  auto prob = -std::expm1(
-      -std::exp(cross_sec_param_ - .25*distance_squared/width_squared_));
+  // which we could sample as
+  //   P > U
+  // where U is a standard uniform (0, 1) random number.  We can also compute
+  //   1 - P = exp(...)
+  // and then sample
+  //   (1 - P) > (1 - U)
+  // or equivalently
+  //   (1 - P) < U
+  auto one_minus_prob = std::exp(
+      -std::exp(cross_sec_param_ - .25*distance_sqr/width_sqr_));
 
   // Sample one random number and decide if this pair participates.
-  if (prob > random::canonical<>()) {
+  if (one_minus_prob < random::canonical<>()) {
     A.set_participant();
     B.set_participant();
     return true;
   }
 
   return false;
-}
-
-inline double NucleonProfile::sample_fluct() const {
-  return fluct_dist_(random::engine);
 }
 
 }  // namespace trento

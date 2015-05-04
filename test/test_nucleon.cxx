@@ -27,18 +27,20 @@ TEST_CASE( "nucleon" ) {
   });
 
   NucleonProfile profile{var_map};
+  profile.fluctuate();
 
   // truncation radius
   auto R = profile.radius();
   CHECK( R == Approx(5*width) );
 
   // thickness function
-  CHECK( profile.thickness(0.) == Approx(1/wsq) );
-  CHECK( profile.thickness(wsq) == Approx(1/wsq*std::exp(-.5)) );
+  // check relative to zero
+  auto tzero = profile.thickness(0.);
+  CHECK( profile.thickness(wsq) == Approx(tzero*std::exp(-.5)) );
 
   // random point inside radius
   auto dsq = std::pow(R*random::canonical<>(), 2);
-  CHECK( profile.thickness(dsq) == Approx(1/wsq*std::exp(-.5*dsq/wsq)) );
+  CHECK( profile.thickness(dsq) == Approx(tzero*std::exp(-.5*dsq/wsq)) );
 
   // random point outside radius
   dsq = std::pow(R*(1+random::canonical<>()), 2);
@@ -48,8 +50,10 @@ TEST_CASE( "nucleon" ) {
   // just check they have unit mean -- the rest is handled by the C++ impl.
   auto total = 0.;
   auto n = 1e6;
-  for (auto i = 0; i < static_cast<int>(n); ++i)
-    total += profile.sample_fluct();
+  for (auto i = 0; i < static_cast<int>(n); ++i) {
+    profile.fluctuate();
+    total += profile.thickness(0.) * (2*M_PI*wsq);
+  }
 
   auto mean = total/n;
   CHECK( mean == Approx(1.).epsilon(.002) );
@@ -77,7 +81,7 @@ TEST_CASE( "nucleon" ) {
 
   // test cross section
   // min-bias impact params
-  auto bmax = 1.1*2*R;
+  auto bmax = profile.max_impact();
   auto nev = 1e6;
   auto count = 0;
   for (auto i = 0; i < static_cast<int>(nev); ++i) {
@@ -93,11 +97,28 @@ TEST_CASE( "nucleon" ) {
   // precision is better than this, but let's be conservative
   CHECK( xsec_mc == Approx(xsec).epsilon(.02) );
 
+  // impact larger than max should never participate
+  auto b = bmax + random::canonical<>();
+  A.sample_nucleons(.5*b);
+  B.sample_nucleons(-.5*b);
+  CHECK( !profile.participate(nA, nB) );
+
+  // very large fluctuation parameters mean no fluctuations
+  auto no_fluct_var_map = make_var_map({
+      {"fluctuation",   1e12},
+      {"cross-section", xsec},
+      {"nucleon-width", width},
+  });
+
+  NucleonProfile no_fluct_profile{no_fluct_var_map};
+  no_fluct_profile.fluctuate();
+  CHECK( no_fluct_profile.thickness(0) == Approx(1/(2*M_PI*wsq)) );
+
   // nucleon width too small
   auto bad_var_map = make_var_map({
       {"fluctuation",   1.},
       {"cross-section", 5.},
       {"nucleon-width", .1},
   });
-  CHECK_THROWS_AS( NucleonProfile prof{bad_var_map}, std::domain_error );
+  CHECK_THROWS_AS( NucleonProfile bad_profile{bad_var_map}, std::domain_error );
 }

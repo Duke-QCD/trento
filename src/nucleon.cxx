@@ -32,22 +32,33 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
   return param_type<RealType>{alpha, 1./alpha};
 }
 
-}  // unnamed namespace
+// These constants define distances in terms of the width of the nucleon profile
+// Gaussian thickness function.
 
-NucleonProfile::NucleonProfile(const VarMap& var_map)
-    : width_squared_(std::pow(var_map["nucleon-width"].as<double>(), 2)),
-      trunc_radius_squared_(std::pow(trunc_widths_, 2) * width_squared_),
-      fast_exp_(-.5*trunc_widths_*trunc_widths_, 0., 1000),
-      fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())) {
-  // Determine cross section.
+// Truncation radius of the thickness function.
+constexpr double trunc_radius_widths = 5.;
+
+// Maximum impact parameter for participation.
+constexpr double max_impact_widths = 6.;
+
+// Trivial helper function.
+template <typename T>
+constexpr T sqr(T value) {
+  return value * value;
+}
+
+// Determine the cross section parameter for sampling participants.
+// TODO: derive this
+double compute_cross_sec_param(const VarMap& var_map) {
+  // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
+  auto width =  var_map["nucleon-width"].as<double>();
+
   if (sigma_nn < 0.) {
     // TODO: automatically set from beam energy
     // auto sqrt_s = var_map["beam-energy"].as<double>();
     sigma_nn = 6.4;
   }
-
-  // TODO: derive the cross section parameter
 
   // Initialize arguments for boost root finding function.
 
@@ -65,21 +76,22 @@ NucleonProfile::NucleonProfile(const VarMap& var_map)
   // (but no harm in overestimating).
   boost::uintmax_t max_iter = 1000;
 
-  // Cache some quantities.
-  auto snn_div_four_pi_wsq = .5 * math::constants::one_div_two_pi<double>() *
-                             sigma_nn / width_squared_;
-  auto t = trunc_widths_ * trunc_widths_;  // for lack of a better name
+  // The right-hand side of the equation.
+  auto rhs = sigma_nn / (4 * math::double_constants::pi * sqr(width));
+
+  // This quantity appears a couple times in the equation.
+  auto c = sqr(max_impact_widths) / 4;
 
   try {
     auto result = math::tools::toms748_solve(
-      [&snn_div_four_pi_wsq, &t](double x) {
+      [&rhs, &c](double x) {
         using std::exp;
         using math::expint;
-        return t - expint(-exp(x)) + expint(-exp(x-t)) - snn_div_four_pi_wsq;
+        return c - expint(-exp(x)) + expint(-exp(x-c)) - rhs;
       },
       a, b, tol, max_iter);
 
-    cross_sec_param_ = .5*(result.first + result.second);
+    return .5*(result.first + result.second);
   }
   catch (const std::domain_error&) {
     // Root finding fails for very small nucleon widths, w^2/sigma_nn < ~0.01.
@@ -87,5 +99,18 @@ NucleonProfile::NucleonProfile(const VarMap& var_map)
       "unable to fit cross section -- nucleon width too small?"};
   }
 }
+
+}  // unnamed namespace
+
+NucleonProfile::NucleonProfile(const VarMap& var_map)
+    : width_sqr_(sqr(var_map["nucleon-width"].as<double>())),
+      trunc_radius_sqr_(sqr(trunc_radius_widths)*width_sqr_),
+      max_impact_sqr_(sqr(max_impact_widths)*width_sqr_),
+      neg_one_div_two_width_sqr_(-.5/width_sqr_),
+      cross_sec_param_(compute_cross_sec_param(var_map)),
+      fast_exp_(-.5*sqr(trunc_radius_widths), 0., 1000),
+      fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
+      prefactor_(math::double_constants::one_div_two_pi/width_sqr_)
+{}
 
 }  // namespace trento
