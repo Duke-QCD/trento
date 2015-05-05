@@ -18,6 +18,8 @@ using namespace trento;
 TEST_CASE( "proton" ) {
   auto nucleus = Nucleus::create("p");
 
+  CHECK( dynamic_cast<Proton*>(nucleus.get()) != nullptr );
+
   // proton contains one nucleon
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == 1 );
   CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == 1 );
@@ -40,6 +42,8 @@ TEST_CASE( "proton" ) {
 
 TEST_CASE( "lead nucleus" ) {
   auto nucleus = Nucleus::create("Pb");
+
+  CHECK( dynamic_cast<WoodsSaxonNucleus*>(nucleus.get()) != nullptr );
 
   constexpr int A = 208;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
@@ -71,18 +75,40 @@ TEST_CASE( "lead nucleus" ) {
   CHECK( !initial_participants );
 }
 
+TEST_CASE( "copper nucleus" ) {
+  auto nucleus = Nucleus::create("Cu");
+  auto def_nucleus = Nucleus::create("Cu2");
+
+  CHECK( dynamic_cast<WoodsSaxonNucleus*>(nucleus.get()) != nullptr );
+  CHECK( dynamic_cast<DeformedWoodsSaxonNucleus*>(def_nucleus.get()) != nullptr );
+
+  constexpr int A = 62;
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
+  CHECK( std::distance(def_nucleus->cbegin(), def_nucleus->cend()) == A );
+
+  CHECK( nucleus->radius() > 4. );
+  CHECK( def_nucleus->radius() > nucleus->radius() );
+}
+
 TEST_CASE( "gold nucleus" ) {
   auto nucleus = Nucleus::create("Au");
+  auto def_nucleus = Nucleus::create("Au2");
+
+  CHECK( dynamic_cast<WoodsSaxonNucleus*>(nucleus.get()) != nullptr );
+  CHECK( dynamic_cast<DeformedWoodsSaxonNucleus*>(def_nucleus.get()) != nullptr );
 
   constexpr int A = 197;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
-  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
+  CHECK( std::distance(def_nucleus->cbegin(), def_nucleus->cend()) == A );
 
   CHECK( nucleus->radius() > 6. );
+  CHECK( def_nucleus->radius() > nucleus->radius() );
 }
 
 TEST_CASE( "uranium nucleus" ) {
   auto nucleus = Nucleus::create("U");
+
+  CHECK( dynamic_cast<DeformedWoodsSaxonNucleus*>(nucleus.get()) != nullptr );
 
   constexpr int A = 238;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
@@ -199,6 +225,20 @@ TEST_CASE( "deformed woods-saxon sampling" ) {
   };
 
   CHECK( mean_ecc2(nucleus_def) > 2.*mean_ecc2(nucleus_sym) );
+}
+
+TEST_CASE( "nuclear radius" ) {
+  constexpr auto R = 5., a = .5;
+  constexpr auto radius = R + 3*a;
+
+  WoodsSaxonNucleus nucleus{100, R, a};
+  DeformedWoodsSaxonNucleus dummy_def_nucleus{100, R, a, 0., 0.};
+
+  CHECK( nucleus.radius() == Approx(radius) );
+  CHECK( dummy_def_nucleus.radius() == Approx(radius) );
+
+  DeformedWoodsSaxonNucleus def_nucleus{100, R, a, .2, .1};
+  CHECK( def_nucleus.radius() > radius );
 }
 
 TEST_CASE( "unknown nucleus species" ) {

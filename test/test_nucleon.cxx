@@ -82,6 +82,8 @@ TEST_CASE( "nucleon" ) {
   // test cross section
   // min-bias impact params
   auto bmax = profile.max_impact();
+  CHECK( bmax == Approx(6*width) );
+
   auto nev = 1e6;
   auto count = 0;
   for (auto i = 0; i < static_cast<int>(nev); ++i) {
