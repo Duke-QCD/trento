@@ -10,6 +10,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
+#ifdef TRENTO_HDF5
+#include <H5Cpp.h>
+#endif
+
 #include "../src/event.h"
 #include "../src/nucleus.h"
 
@@ -180,4 +184,76 @@ TEST_CASE( "output" ) {
     fs::remove(temp_path/"27.dat");
     fs::remove(temp_path);
   }
+
+#ifdef TRENTO_HDF5
+  SECTION( "hdf5 only" ) {
+    auto nev = 10;
+
+    // configure for writing a random hdf5 file
+    auto temp_path = fs::temp_directory_path() / fs::unique_path();
+    temp_path.replace_extension(".hdf5");
+    auto output_var_map = make_var_map({
+      {"quiet", true},
+      {"number-events", nev},
+      {"output", temp_path}
+    });
+    Output output{output_var_map};
+
+    for (auto n = 0; n < nev; ++n)
+      output(n, b, event);
+
+    H5::H5File file{temp_path.string(), H5F_ACC_RDONLY};
+    CHECK( static_cast<int>(file.getNumObjs()) == nev );
+
+    auto name = file.getObjnameByIdx(0);
+    CHECK( name == "event_0" );
+
+    auto dataset = file.openDataSet(name);
+
+    // read back in the event grid to another array
+    Event::Grid grid_check{event.reduced_thickness_grid()};
+    dataset.read(grid_check.data(), H5::PredType::NATIVE_DOUBLE);
+
+    // verify each grid element
+    auto grid_correct = std::equal(
+      grid_check.origin(),
+      grid_check.origin() + grid_check.num_elements(),
+      event.reduced_thickness_grid().origin(),
+      [](const double& value_check, const double& value) {
+        return value_check == Approx(value);
+      }
+    );
+    CHECK( grid_correct );
+
+    // verify attributes
+    double double_check;
+    int int_check;
+
+    dataset.openAttribute("b").read(H5::PredType::NATIVE_DOUBLE, &double_check);
+    CHECK( double_check == Approx(b) );
+
+    dataset.openAttribute("npart").read(H5::PredType::NATIVE_INT, &int_check);
+    CHECK( int_check == event.npart() );
+
+    dataset.openAttribute("mult").read(H5::PredType::NATIVE_DOUBLE, &double_check);
+    CHECK( double_check == Approx(event.multiplicity()) );
+
+    for (const auto& ecc : event.eccentricity()) {
+      dataset.openAttribute("e" + std::to_string(ecc.first))
+        .read(H5::PredType::NATIVE_DOUBLE, &double_check);
+      CHECK( double_check == Approx(ecc.second) );
+    }
+
+    CHECK( dataset.getNumAttrs() == 7 );
+
+    dataset.close();
+    file.close();
+
+    // attempting to output to the same file again should throw an error
+    CHECK_THROWS_AS( Output{output_var_map}, std::runtime_error );
+
+    // clear temporary file
+    fs::remove(temp_path);
+  }
+#endif  // TRENTO_HDF5
 }

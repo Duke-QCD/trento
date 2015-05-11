@@ -15,6 +15,94 @@
 
 #include "event.h"
 
+// Compile HDF5 output if available.
+#ifdef TRENTO_HDF5
+
+#include "H5Cpp.h"
+
+namespace trento {
+
+namespace {
+
+/// Simple functor to write many events to an HDF5 file.
+class HDF5Writer {
+ public:
+  /// Prepare an HDF5 file for writing.
+  HDF5Writer(const fs::path& filename);
+
+  /// Write an event.
+  void operator()(int num, double impact_param, const Event& event) const;
+
+ private:
+  /// Internal storage of the file object.
+  H5::H5File file_;
+};
+
+// Map types to HDF5 predefined datatypes.
+// Must create an explicit template specialization for each used type.
+using H5Type = H5::PredType;
+template <typename T> const H5Type& h5_type();
+template <> const H5Type& h5_type<double>() { return H5Type::NATIVE_DOUBLE; }
+template <> const H5Type& h5_type<int>()    { return H5Type::NATIVE_INT; }
+
+// Add a simple scalar attribute to an HDF5 dataset.
+template <typename T>
+void h5_add_scalar_attr(
+    const H5::DataSet& dataset, const std::string& name, const T& value) {
+  const auto& datatype = h5_type<T>();
+  auto attr = dataset.createAttribute(name, datatype, H5::DataSpace{});
+  attr.write(datatype, &value);
+}
+
+HDF5Writer::HDF5Writer(const fs::path& filename)
+    : file_(filename.string(), H5F_ACC_TRUNC)
+{}
+
+void HDF5Writer::operator()(
+    int num, double impact_param, const Event& event) const {
+  // Prepare arguments for new HDF5 dataset.
+
+  // The dataset name is a prefix plus the event number.
+  const std::string name{"event_" + std::to_string(num)};
+
+  // Cache a reference to the event grid -- will need it several times.
+  const auto& grid = event.reduced_thickness_grid();
+
+  // Define HDF5 datatype and dataspace to match the grid.
+  const auto& datatype = h5_type<Event::Grid::element>();
+  constexpr auto num_dims = Event::Grid::dimensionality;
+  hsize_t shape[num_dims];
+  std::copy(grid.shape(), grid.shape() + num_dims, shape);
+  H5::DataSpace dataspace{num_dims, shape};
+
+  // Set dataset storage properties.
+  H5::DSetCreatPropList proplist{};
+  // Set chunk size to the entire grid.  For typical grid sizes (~100x100), this
+  // works out to ~80 KiB, which is pretty optimal.  Anyway, it makes logical
+  // sense to chunk this way, since chunks must be read contiguously and there's
+  // no reason to read a partial grid.
+  proplist.setChunk(num_dims, shape);
+  // Set gzip compression level.  4 is the default in h5py.
+  proplist.setDeflate(4);
+
+  // Create the new dataset and write the grid.
+  auto dataset = file_.createDataSet(name, datatype, dataspace, proplist);
+  dataset.write(grid.data(), datatype);
+
+  // Write event attributes.
+  h5_add_scalar_attr(dataset, "b", impact_param);
+  h5_add_scalar_attr(dataset, "npart", event.npart());
+  h5_add_scalar_attr(dataset, "mult", event.multiplicity());
+  for (const auto& ecc : event.eccentricity())
+    h5_add_scalar_attr(dataset, "e" + std::to_string(ecc.first), ecc.second);
+}
+
+}  // unnamed namespace
+
+}  // namespace trento
+
+#endif  // TRENTO_HDF5
+
 namespace trento {
 
 namespace {
@@ -109,7 +197,14 @@ Output::Output(const VarMap& var_map) {
   if (var_map.count("output")) {
     const auto& output_path = var_map["output"].as<fs::path>();
     if (is_hdf5(output_path)) {
-      throw std::runtime_error{"HDF5 not implemented yet"};  // TODO
+#ifdef TRENTO_HDF5
+      if (fs::exists(output_path))
+        throw std::runtime_error{"file '" + output_path.string() +
+                                 "' exists, will not overwrite"};
+      writers_.emplace_back(HDF5Writer{output_path});
+#else
+      throw std::runtime_error{"HDF5 output was not compiled"};
+#endif  // TRENTO_HDF5
     } else {
       // Text files are all written into a single directory.  Require the
       // directory to be initially empty to avoid accidental overwriting and/or

@@ -9,6 +9,22 @@ endif()
 
 find_package(Boost REQUIRED COMPONENTS filesystem program_options system)
 
+# Search for the HDF5 C++ library.  The CMake FindHDF5 package does not work
+# correctly for C++, because it will report success if it finds only the C
+# library and not C++.  It also uses the rather unfortunate 'h5c++' compiler
+# wrapper which sets a lot of unnecessary crap.  All that's really needed is to
+# check for 'libhdf5_cpp', and if found, link to it along with 'libhdf5' and
+# 'libz' (for gzip compression).  Also set the compiler definition so HDF5
+# output will be compiled.
+find_library(HDF5_CXX_LIB hdf5_cpp)
+if("${HDF5_CXX_LIB}" STREQUAL "HDF5_CXX_LIB-NOTFOUND")
+  message(STATUS "HDF5 C++ library not found")
+else()
+  message(STATUS "Found HDF5 C++ library: ${HDF5_CXX_LIB}")
+  set(HDF5_LIBRARIES hdf5_cpp hdf5 z)
+  add_definitions(-DTRENTO_HDF5)
+endif()
+
 set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
 set(PROJECT_VERSION_PATCH dev)

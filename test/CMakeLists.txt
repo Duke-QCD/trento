@@ -43,7 +43,7 @@ add_executable(${TEST_EXE} EXCLUDE_FROM_ALL
   test_nucleus.cxx
   test_output.cxx
 )
-target_link_libraries(${TEST_EXE} ${LIBRARY_NAME} ${Boost_LIBRARIES})
+target_link_libraries(${TEST_EXE} ${LIBRARY_NAME} ${Boost_LIBRARIES} ${HDF5_LIBRARIES})
 
 # Add a target to actually run the tests.
 add_custom_target(catch COMMAND ${TEST_EXE})
