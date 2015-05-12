@@ -127,12 +127,12 @@ int main(int argc, char* argv[]) {
 
   OptDesc grid_opts{"grid options"};
   grid_opts.add_options()
-    ("grid-width",
-     po::value<double>()->value_name("FLOAT")->default_value(20., "20.0"),
-     "width [fm], grid extends from -width/2 to +width/2")
-    ("grid-steps",
-     po::value<int>()->value_name("INT")->default_value(200, "200"),
-     "number of steps from -width/2 to +width/2");
+    ("grid-max",
+     po::value<double>()->value_name("FLOAT")->default_value(10., "10.0"),
+     "xy max [fm], grid extends from -max to +max")
+    ("grid-step",
+     po::value<double>()->value_name("FLOAT")->default_value(0.2, "0.2"),
+     "step size [fm]");
 
   // Make a meta-group containing all the option groups except the main
   // positional options (don't want the auto-generated usage info for those).

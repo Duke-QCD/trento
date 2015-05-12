@@ -106,11 +106,14 @@ class Event {
   /// Normalization factor.
   const double norm_;
 
+  /// Grid step size.
+  const double dxy_;
+
   /// Number of grid steps.
   const int nsteps_;
 
-  /// Grid width and step size.
-  const double width_, dxy_;
+  /// Grid xy maximum (half width).
+  const double xymax_;
 
   /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
   Grid TA_, TB_, TR_;

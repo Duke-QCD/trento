@@ -23,8 +23,8 @@ TEST_CASE( "output" ) {
   auto var_map = make_var_map({
     {"normalization", 1.},
     {"reduced-thickness", 0.},
-    {"grid-width", 18.},
-    {"grid-steps", 60},
+    {"grid-max", 9.},
+    {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5}

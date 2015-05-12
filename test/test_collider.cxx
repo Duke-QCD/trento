@@ -25,8 +25,8 @@ TEST_CASE( "collider" ) {
     {"b-max", -1.},
     {"normalization", 1.},
     {"reduced-thickness", 0.},
-    {"grid-width", 18.},
-    {"grid-steps", 60},
+    {"grid-max", 9.},
+    {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5}
@@ -86,8 +86,8 @@ TEST_CASE( "fixed impact parameter" ) {
     {"b-max", bfixed},
     {"normalization", 1.},
     {"reduced-thickness", 0.},
-    {"grid-width", 18.},
-    {"grid-steps", 60},
+    {"grid-max", 9.},
+    {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5}
@@ -129,8 +129,8 @@ TEST_CASE( "random seed" ) {
         {"b-max", -1.},
         {"normalization", 1.},
         {"reduced-thickness", 0.},
-        {"grid-width", 18.},
-        {"grid-steps", 60},
+        {"grid-max", 9.},
+        {"grid-step", 0.3},
         {"fluctuation", 1.},
         {"cross-section", 6.4},
         {"nucleon-width", 0.5}

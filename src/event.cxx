@@ -38,11 +38,18 @@ inline double geometric_mean(double a, double b) {
 
 }  // unnamed namespace
 
+// Determine the grid parameters like so:
+//   1. Read and set step size from the configuration.
+//   2. Read grid max from the config, then set the number of steps as
+//      nsteps = ceil(2*max/step).
+//   3. Set the actual grid max as max = nsteps*step/2.  Hence if the step size
+//      does not evenly divide the config max, the actual max will be marginally
+//      larger (by at most one step size).
 Event::Event(const VarMap& var_map)
     : norm_(var_map["normalization"].as<double>()),
-      nsteps_(var_map["grid-steps"].as<int>()),
-      width_(var_map["grid-width"].as<double>()),
-      dxy_(width_/nsteps_),
+      dxy_(var_map["grid-step"].as<double>()),
+      nsteps_(std::ceil(2.*var_map["grid-max"].as<double>()/dxy_)),
+      xymax_(.5*nsteps_*dxy_),
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
       TR_(boost::extents[nsteps_][nsteps_]) {
@@ -115,8 +122,8 @@ void Event::compute_nuclear_thickness(
     ++npart_;
 
     // Work in coordinates relative to (-width/2, -width/2).
-    double x = nucleon.x() + .5*width_;
-    double y = nucleon.y() + .5*width_;
+    double x = nucleon.x() + xymax_;
+    double y = nucleon.y() + xymax_;
 
     // Determine min & max indices of nucleon subgrid.
     int ixmin = clip(static_cast<int>((x-r)/dxy_), 0, nsteps_-1);

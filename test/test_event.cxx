@@ -28,14 +28,15 @@ TEST_CASE( "event" ) {
     auto fluct = 1e12;
 
     // Coarse-ish grid.
-    auto grid_width = 18.;
-    auto grid_steps = 90;
+    auto grid_max = 9.;
+    auto grid_step = 0.3;
+    auto grid_nsteps = 60;
 
     auto var_map = make_var_map({
         {"normalization", norm},
         {"reduced-thickness", p},
-        {"grid-width", grid_width},
-        {"grid-steps", grid_steps},
+        {"grid-max", grid_max},
+        {"grid-step", grid_step},
         {"fluctuation",   fluct},
         {"cross-section", xsec},
         {"nucleon-width", nucleon_width},
@@ -45,8 +46,8 @@ TEST_CASE( "event" ) {
     NucleonProfile profile{var_map};
 
     CHECK( event.reduced_thickness_grid().num_dimensions() == 2 );
-    CHECK( event.reduced_thickness_grid().shape()[0] == grid_steps );
-    CHECK( event.reduced_thickness_grid().shape()[1] == grid_steps );
+    CHECK( static_cast<int>(event.reduced_thickness_grid().shape()[0]) == grid_nsteps );
+    CHECK( static_cast<int>(event.reduced_thickness_grid().shape()[1]) == grid_nsteps );
 
     auto nucleusA = Nucleus::create("Pb");
     auto nucleusB = Nucleus::create("Pb");
@@ -75,7 +76,7 @@ TEST_CASE( "event" ) {
     CHECK( npart == event.npart() );
 
     // Compute TR grid the slow way -- switch the order of grid and nucleon loops.
-    boost::multi_array<double, 2> TR{boost::extents[grid_steps][grid_steps]};
+    boost::multi_array<double, 2> TR{boost::extents[grid_nsteps][grid_nsteps]};
 
     auto thickness = [&profile](const Nucleus& nucleus, double x, double y) {
       auto t = 0.;
@@ -98,10 +99,10 @@ TEST_CASE( "event" ) {
         return std::pow(.5*(std::pow(a, p) + std::pow(b, p)), 1./p);
     };
 
-    for (auto iy = 0; iy < grid_steps; ++iy) {
-      for (auto ix = 0; ix < grid_steps; ++ix) {
-        auto x = (ix + .5) * grid_width/grid_steps - .5*grid_width;
-        auto y = (iy + .5) * grid_width/grid_steps - .5*grid_width;
+    for (auto iy = 0; iy < grid_nsteps; ++iy) {
+      for (auto ix = 0; ix < grid_nsteps; ++ix) {
+        auto x = (ix + .5) * 2 * grid_max/grid_nsteps - grid_max;
+        auto y = (iy + .5) * 2 * grid_max/grid_nsteps - grid_max;
         auto TA = thickness(*nucleusA, x, y);
         auto TB = thickness(*nucleusB, x, y);
         TR[iy][ix] = norm * gen_mean(TA, TB);
@@ -109,7 +110,7 @@ TEST_CASE( "event" ) {
     }
 
     // Verify multiplicity.
-    auto mult = std::pow(grid_width/grid_steps, 2) *
+    auto mult = std::pow(2*grid_max/grid_nsteps, 2) *
       std::accumulate(TR.origin(), TR.origin() + TR.num_elements(), 0.);
     CHECK( mult == Approx(event.multiplicity()) );
 
@@ -129,8 +130,8 @@ TEST_CASE( "event" ) {
 
     // Verify eccentricity.
     auto sum = 0., xcm = 0., ycm = 0.;
-    for (auto iy = 0; iy < grid_steps; ++iy) {
-      for (auto ix = 0; ix < grid_steps; ++ix) {
+    for (auto iy = 0; iy < grid_nsteps; ++iy) {
+      for (auto ix = 0; ix < grid_nsteps; ++ix) {
         auto& t = TR[iy][ix];
         sum += t;
         xcm += t*ix;
@@ -142,8 +143,8 @@ TEST_CASE( "event" ) {
 
     for (auto n = 2; n <= 5; ++n) {
       auto real = 0., imag = 0., weight = 0.;
-      for (auto iy = 0; iy < grid_steps; ++iy) {
-        for (auto ix = 0; ix < grid_steps; ++ix) {
+      for (auto iy = 0; iy < grid_nsteps; ++iy) {
+        for (auto ix = 0; ix < grid_nsteps; ++ix) {
           auto x = ix - xcm;
           auto y = iy - ycm;
           auto w = TR[iy][ix] * std::pow(x*x + y*y, .5*n);
@@ -158,4 +159,18 @@ TEST_CASE( "event" ) {
       CHECK( ecc == Approx(event.eccentricity().at(n)) );
     }
   }
+
+  // test grid size when step size does not evenly divide width
+  auto var_map = make_var_map({
+      {"normalization", 1.},
+      {"reduced-thickness", 0.},
+      {"grid-max", 10.},
+      {"grid-step", 0.3}
+  });
+
+  Event event{var_map};
+
+  CHECK( event.reduced_thickness_grid().num_dimensions() == 2 );
+  CHECK( event.reduced_thickness_grid().shape()[0] == 67 );
+  CHECK( event.reduced_thickness_grid().shape()[1] == 67 );
 }
