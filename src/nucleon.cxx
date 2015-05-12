@@ -54,11 +54,10 @@ double compute_cross_sec_param(const VarMap& var_map) {
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto width =  var_map["nucleon-width"].as<double>();
 
-  if (sigma_nn < 0.) {
-    // TODO: automatically set from beam energy
-    // auto sqrt_s = var_map["beam-energy"].as<double>();
-    sigma_nn = 6.4;
-  }
+  // TODO: automatically set from beam energy
+  // if (sigma_nn < 0.) {
+  //   auto sqrt_s = var_map["beam-energy"].as<double>();
+  // }
 
   // Initialize arguments for boost root finding function.
 

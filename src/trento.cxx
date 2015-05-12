@@ -43,9 +43,10 @@ void print_bibtex() {
     "}\n";
 }
 
-void print_default_config() {
-  std::cout << "to do\n";
-}
+// TODO
+// void print_default_config() {
+//   std::cout << "to do\n";
+// }
 
 }  // unnamed namespace
 
@@ -83,7 +84,7 @@ int main(int argc, char* argv[]) {
     ("help,h", "show this help message and exit")
     ("version", "print version information and exit")
     ("bibtex", "print bibtex entry and exit")
-    ("default-config", "print a config file with default settings and exit")
+    // ("default-config", "print a config file with default settings and exit")
     ("config-file,c", po::value<VecPath>()->value_name("FILE"),
      "configuration file, can be passed multiple times");
 
@@ -102,14 +103,14 @@ int main(int argc, char* argv[]) {
     ("fluctuation,k",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
      "gamma fluctuation shape parameter")
-    ("beam-energy,e",
-     po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
-     "beam energy sqrt(s) [GeV]")
+    // ("beam-energy,e",
+    //  po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
+    //  "beam energy sqrt(s) [GeV]")
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
     ("cross-section,x",
-     po::value<double>()->value_name("FLOAT")->default_value(-1., "auto"),
+     po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
      "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
     ("normalization,n",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
@@ -181,10 +182,10 @@ int main(int argc, char* argv[]) {
       print_bibtex();
       return 0;
     }
-    if (var_map.count("default-config")) {
-      print_default_config();
-      return 0;
-    }
+    // if (var_map.count("default-config")) {
+    //   print_default_config();
+    //   return 0;
+    // }
 
     // Merge any config files.
     if (var_map.count("config-file")) {
