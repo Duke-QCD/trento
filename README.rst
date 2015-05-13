@@ -2,6 +2,9 @@ T\ :sub:`R`\ ENTo
 =================
 *Reduced Thickness Event-by-event Nuclear Topology*
 
+.. image:: http://img.shields.io/travis/Duke-QCD/trento.svg?style=flat-square
+  :target: https://travis-ci.org/Duke-QCD/trento
+
 T\ :sub:`R`\ ENTo is a simple, fast model for the initial conditions of high-energy nuclear collisions (pp, pA, AA).
 `arXiv:1412.4708 [nucl-th] <http://inspirehep.net/record/1334386>`_ formally presents the model and preliminary results.
 
@@ -37,6 +40,11 @@ After installing the dependencies, download the `latest release <https://github.
 
 This will install the compiled binary to ``~/.local/bin/trento``.
 If you do not want this to happen, run ``make`` instead of ``make install`` and the binary will be left at ``build/src/trento``.
+
+The code is `continuously tested <https://travis-ci.org/Duke-QCD/trento>`_ on Ubuntu with GCC 4.9.
+It should run just as well on OS X.
+For the compiler, Clang works as well as GCC.
+Other compilers should work but may require modifying the compiler flags.
 
 Usage
 -----
