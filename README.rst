@@ -29,7 +29,7 @@ Arch::
 
    pacman -S cmake gcc boost boost-libs hdf5-cpp-fortran
 
-After installing the dependencies, compile and install T\ :sub:`R`\ ENTo through the standard CMake sequence::
+After installing the dependencies, download the `latest release <https://github.com/Duke-QCD/trento/releases/latest>`_ or clone the repository, then compile and install T\ :sub:`R`\ ENTo through the standard CMake sequence::
 
    mkdir build && cd build
    cmake ..
@@ -48,7 +48,7 @@ The basic syntax is ::
 where the only required arguments are the two projectile names.
 For example, ``trento Pb Pb 10`` would run ten lead-lead events.
 
-The remaining options each have a reasonable default so need not be specified.
+The remaining options each have a reasonable default and are hence optional.
 They may be given in any order, before or after the projectiles.
 Run ``trento --help`` for a brief summary of the options and see below for more detailed descriptions and some `Examples`_.
 
@@ -76,10 +76,16 @@ General options
 ~~~~~~~~~~~~~~~
 These are general options that don't fit in any other category.
 
--h, --help  Show the help message and exit.
---version   Print version number and exit.
---bibtex    Print bibtex entry and exit.
--c FILE, --config-file=FILE
+-h, --help
+   Show the help message and exit.
+
+--version
+   Print version number and exit.
+
+--bibtex
+   Print bibtex entry and exit.
+
+-c, --config-file FILE
    Path to configuration file (see `Configuration files`_ below).
    May be given multiple times.
 
@@ -91,37 +97,65 @@ The default output mode is to print event-by-event properties to stdout, in the 
    event_number impact_param npart mult e2 e3 e4 e5
 
 with one line for each event.
-``mult`` is the total initial entropy and the ``en`` are eccentricity harmonics.
-By default, the actual initial entropy profiles (grids) are not output.
+``mult`` is the total initial entropy and the ``en`` are eccentricity harmonics ɛ\ :sub:`n`.
+This format is designed for easy parsing, redirection to files, etc.
 
--q, --quiet  Disable printing event properties to stdout.
--o PATH, --output=PATH
-   Path to output the event profiles.
-   There are two supported output formats: text and HDF5 (if installed).
-   If the argument has an HDF5-like extension (``.hdf5``, ``.hdf``, ``.hd5``, ``.h5``), then all events will be written to that HDF5 file.
-   Otherwise, the argument is interpreted as a directory and events will be written to numbered text files in the directory.
+By default, the actual initial entropy profiles (grids) are not output.
+There are two available output formats: text and HDF5 (if compiled).
+
+In text mode, each event is written to a separate text file.
+Each file has a commented header containing the event properties, like this::
+
+   # event 0
+   # b     = 2.964077155
+   # npart = 380
+   # mult  = 168.603282
+   # e2    = 0.01953253866
+   # e3    = 0.08961920965
+   # e4    = 0.1101683349
+   # e5    = 0.1727159106
+
+The profile follows the header as a standard block-style grid.
+
+HDF5 is a high-performance, cross-platform binary format for large numerical datasets.
+Libraries are available in `most languages <https://en.wikipedia.org/wiki/Hierarchical_Data_Format#Interfaces>`_.
+HDF5 is significantly faster than text output:
+writing an event to a text file usually takes much longer than computing the actual event;
+writing to HDF5 incurs only a small overhead.
+Therefore, HDF5 is the recommended output format.
+
+In HDF5 mode, all events are written to a single file with each event in a separate HDF5 dataset.
+Event properties are written to each dataset as HDF5 attributes with names ``b``, ``npart``, ``mult``, ``e2``, etc.
+
+-q, --quiet
+   Disable printing event properties to stdout.
+   Since both text and HDF5 output contain the event properties, it's often desirable to specify this option along with the output option.
+
+-o, --output PATH
+   Path to output events.
+   If the path has an HDF5-like extension (``.hdf5``, ``.hdf``, ``.hd5``, ``.h5``), then all events will be written to that HDF5 file.
+   Otherwise, the path is interpreted as a directory and events will be written to numbered text files in the directory.
 
    For text output, the directory will be created if it does not exist.
-   If it does already exist, it must be empty (this is to avoid accidentally spewing thousands of files into an already-used directory).
-   A commented header will be written to each text file with the standard event properties (impact parameter, multiplicity, etc).
+   If it does already exist, it must be empty (this is to avoid accidentally overwriting files or spewing thousands of files into an already-used location).
 
    For HDF5 output, the file must not already exist.
    Each event will be written as a numbered dataset in the file, and the standard event properties will be written as dataset attributes.
 
-Example:
+   Example:
 
-- ``trento Pb Pb 100 --output events`` will write events to text files ``events/00.dat``, ``events/01.dat``, ...
-- ``trento Pb Pb 100 --output events.h5`` will write events to ``events.h5`` with dataset names ``event_0``, ``event_1``, ...
-
-HDF5 is a high-performance, cross-platform binary format for large numerical datasets.
-It is significantly faster than text output:
-writing an event to a text file takes ~3x longer than computing the actual event;
-writing the same event to HDF5 only adds ~20% overhead.
-Therefore, HDF5 is the recommended output format.
+   - ``--output events`` will write to text files ``events/0.dat``, ``events/1.dat``, ...
+   - ``--output events.hdf`` will write to HDF5 file ``events.hdf`` with dataset names ``event_0``, ``event_1``, ...
 
 Physical options
 ~~~~~~~~~~~~~~~~
--p, --reduced-thickness
+These options control the physical behavior of the model.
+They all have reasonable defaults, however **the defaults are not in any way a best-fit to experimental data**.
+They are simply round numbers.
+It is entirely expected that the ideal parameters will change depending on the beam energy.
+In particular, **the cross section must be explicitly set for each beam energy**.
+
+-p, --reduced-thickness FLOAT
    Reduced thickness parameter *p*.
    The reduced thickness is defined as the `generalized mean <https://en.wikipedia.org/wiki/Generalized_mean>`_ of participant nuclear thickness
 
@@ -129,7 +163,7 @@ Physical options
 
    The default is *p* = 0, which corresponds to the geometric mean.
 
--k, --fluctuation
+-k, --fluctuation FLOAT
    `Gamma distribution <https://en.wikipedia.org/wiki/Gamma_distribution>`_ shape parameter *k* for nucleon fluctuations.
    Fluctuations are sampled from a gamma distribution with the scale parameter fixed so that the mean is one:
 
@@ -139,7 +173,7 @@ Physical options
    For small *k*, the distribution has a long tail, leading to large fluctuations.
    For large *k*, the distribution becomes a narrow Gaussian, and eventually a delta function for very large values.
 
--w, --nucleon-width
+-w, --nucleon-width FLOAT
    Gaussian nucleon width in fm:
 
    .. image:: http://latex2png.com/output//latex_0c9ba0458eb84402a2a0fe505dc7164d.png
@@ -147,26 +181,25 @@ Physical options
    The default is 0.5 fm.
    A reasonable range is roughly 0.4–0.8 fm.
 
--n, --normalization
+-n, --normalization FLOAT
    Overall normalization factor.
    The default is 1.
 
--x, --cross-section
-   Sets the inelastic nucleon-nucleon cross section σ\ :sub:`NN` in fm\ :sup:`2`.
+-x, --cross-section FLOAT
+   Inelastic nucleon-nucleon cross section σ\ :sub:`NN` in fm\ :sup:`2`.
    The default is 6.4 fm\ :sup:`2`, which is the approximate experimental value at LHC energy, √s = 2.76 TeV.
 
---b-min
+--b-min FLOAT
    Minimum impact parameter.
    The default is zero.
 
---b-max
+--b-max FLOAT
    Maximum impact parameter.
    The default is to run minimum-bias collisions for the given collision system.
 
    To run at fixed impact parameter, give the same value for both the min and the max.
 
---random-seed
-   A positive integer.
+--random-seed POSITIVE_INT
    Primarily for testing and debugging.
 
 Grid options
@@ -175,17 +208,22 @@ The thickness functions are discretized onto a square grid centered at (0, 0).
 The grid can have a dramatic effect on code speed and precision, so should be set carefully.
 Computation time goes roughly as the number of grid cells *squared*.
 
---grid-max
+--grid-max FLOAT
    *x* and *y* maximum of the grid in fm, i.e. the grid extends from -max to +max.
    The default is 10 fm, large enough to accommodate all collision systems.
    However, this should be set as small as possible, since an unnecessarily large grid slows down the code.
    For anything but uranium-uranium, 9 fm is sufficient.
    For pp and pA, 3 fm is usually a good choice.
 
---grid-step
+--grid-step FLOAT
    Size of grid cell in fm.
    The default is 0.2 fm, sufficient to achieve ~99.9% precision for the event properties.
    This can reasonably be increased as far as the nucleon width; beyond that and precision suffers significantly.
+
+The grid will always be a square *N* × *N* array, with *N* = ceil(2*max/step).
+So e.g. the default settings (max = 10 fm, step = 0.2 fm) imply a 100 × 100 grid.
+The ceiling function ensures that the number of steps is always rounded up, so e.g. given max = 10 fm and step 0.3 fm, the grid will be 67 × 67.
+In this case, the actual grid max will be marginally increased (max = nsteps*step/2).
 
 Regardless of the collision system, the code will always approximately center the overlap region on the grid.
 
@@ -219,14 +257,12 @@ Here's an example including all options::
    grid-step = 0.2
 
 Multiple config files can be given and they will be merged, so options can be separated into modular groups.
-For example, you could have a file ``common.conf`` containing settings for all collision systems::
+For example, one could have a file ``common.conf`` containing settings for all collision systems and files ``PbPb.conf`` and ``pp.conf`` for specific collision systems::
 
    # common.conf
    reduced-thickness = 0.2
    fluctuation = 1.5
    nucleon-width = 0.6
-
-and files ``PbPb.conf`` and ``pp.conf`` for specific collision systems::
 
    # PbPb.conf
    projectile = Pb
@@ -238,7 +274,7 @@ and files ``PbPb.conf`` and ``pp.conf`` for specific collision systems::
    projectile = p
    number-events = 100000
 
-then run ::
+To be used like so::
 
    trento -c common.conf -c PbPb.conf
    trento -c common.conf -c pp.conf
@@ -247,17 +283,25 @@ If an option is specified in a config file and on the command line, the command 
 
 Examples
 --------
-Run a million proton-lead events using default settings and save the event data to file::
+Run a million lead-lead events using default settings and save the event data to file::
 
-   trento Pb Pb 1000000 > /dev/null
+   trento Pb Pb 1000000 > PbPb.dat
 
-Same, but suppress printing to stdout and save events to HDF5::
+Run proton-lead events with a larger cross section (for the higher beam energy) and also compress the output::
 
-   trento Pb Pb 1000000 --quiet --output events.h5
+   trento p Pb 1000000 --cross-section 7.1 | gzip > pPb.dat.gz
 
-Run uranium-uranium events at RHIC (smaller cross section) and a larger nucleon::
+Suppress printing to stdout and save events to HDF5::
 
-   trento U U 1000000 --cross-section 4.2 --nucleon-width 0.6
+   trento p Pb 1000000 --cross-section 7.1 --quiet --output events.hdf
+
+Uranium-uranium events at RHIC (smaller cross section) using short options::
+
+   trento U U 1000000 -x 4.2
+
+Deformed gold-gold with an explicit nucleon width::
+
+   trento Au2 Au2 1000000 -x 4.2 -w 0.6
 
 Simple sorting and selection (e.g. by centrality) can be achieved by combining standard Unix tools.
 For example, to run 1000 events, sort by centrality (multiplicity) and then select the top 10%::
@@ -281,7 +325,7 @@ Here's a nice trick to avoid the temporary file:
    proc.stdout.close()
 
 Now the ``data`` array contains the event properties.
-It can be sorted and selected using numpy's powerful slicing mechanism, for example to sort by centrality as before:
+It can be sorted and selected using numpy indexing, for example to sort by centrality as before:
 
 .. code:: python
 
@@ -305,7 +349,7 @@ Simple example:
 
    import h5py
 
-   h5file = h5py.File('events.h5')
+   h5file = h5py.File('events.hdf')
    dataset = h5file['event_0']
 
    # extract the grid
