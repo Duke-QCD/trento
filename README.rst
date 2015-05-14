@@ -10,15 +10,15 @@ T\ :sub:`R`\ ENTo is a simple, fast model for the initial conditions of high-ene
 
 Installation
 ------------
-Requirements:
+Prerequisites:
 
 - `CMake <http://www.cmake.org>`_ 2.8+
 - A `C++11 compiler <http://en.cppreference.com/w/cpp/compiler_support>`_ (preferably GCC 4.8+ or Clang 3.3+)
 - The `Boost <http://www.boost.org>`_ C++ libraries, including runtime components  ``filesystem`` and ``program_options``
 - (optional) The `HDF5 <http://www.hdfgroup.org/HDF5>`_ C++ library
 
-All these dependencies are readily available on any Linux distribution and OS X.
-Some example installation commands:
+All these dependencies are readily available on any operating system.
+Some example installation commands for a few Linux distributions:
 
 Ubuntu::
 
@@ -40,9 +40,10 @@ After installing the dependencies, download the `latest release <https://github.
 
 This will install the compiled binary to ``~/.local/bin/trento``.
 If you do not want this to happen, run ``make`` instead of ``make install`` and the binary will be left at ``build/src/trento``.
+The remainder of this document assumes ``trento`` is in your ``PATH``.
 
 The code is `continuously tested <https://travis-ci.org/Duke-QCD/trento>`_ on Ubuntu with GCC 4.9.
-It should run just as well on OS X.
+It should run just as well on any Linux distribution or OS X, and probably on Windows.
 For the compiler, Clang works as well as GCC.
 Other compilers should work but may require modifying the compiler flags.
 
@@ -56,13 +57,12 @@ The basic syntax is ::
 where the only required arguments are the two projectile names.
 For example, ``trento Pb Pb 10`` would run ten lead-lead events.
 
-The remaining options each have a reasonable default and are hence optional.
-They may be given in any order, before or after the projectiles.
+The remaining optional arguments may be given in any order, before or after the projectiles.
 Run ``trento --help`` for a brief summary of the options and see below for more detailed descriptions and some `Examples`_.
 
 Specifying projectiles
 ~~~~~~~~~~~~~~~~~~~~~~
-Projectiles should be given as species abbreviations.
+The ``projectile`` arguments take species abbreviations, e.g. ``p``, ``Pb``, etc.
 The known species are
 
 ======  =======  ============  ========
@@ -212,9 +212,9 @@ In particular, **the cross section must be explicitly set for each beam energy**
 
 Grid options
 ~~~~~~~~~~~~
-The thickness functions are discretized onto a square grid centered at (0, 0).
+The thickness functions are discretized onto a square *N* × *N* grid centered at (0, 0).
 The grid can have a dramatic effect on code speed and precision, so should be set carefully.
-Computation time goes roughly as the number of grid cells *squared*.
+Computation time is roughly proportional to the number of grid cells (i.e. *N*\ :sup:`2`).
 
 --grid-max FLOAT
    *x* and *y* maximum of the grid in fm, i.e. the grid extends from -max to +max.
@@ -249,7 +249,7 @@ Here's an example including all options::
 
    # don't print event properties to stdout, save to HDF5
    quiet = true
-   output = PbPb.h5
+   output = PbPb.hdf
 
    reduced-thickness = 0
    fluctuation = 1
@@ -276,11 +276,13 @@ For example, one could have a file ``common.conf`` containing settings for all c
    projectile = Pb
    projectile = Pb
    number-events = 10000
+   grid-max = 9
 
    # pp.conf
    projectile = p
    projectile = p
    number-events = 100000
+   grid-max = 3
 
 To be used like so::
 
@@ -291,28 +293,28 @@ If an option is specified in a config file and on the command line, the command 
 
 Examples
 --------
-Run a million lead-lead events using default settings and save the event data to file::
+Run a thousand lead-lead events using default settings and save the event data to file::
 
-   trento Pb Pb 1000000 > PbPb.dat
+   trento Pb Pb 1000 > PbPb.dat
 
 Run proton-lead events with a larger cross section (for the higher beam energy) and also compress the output::
 
-   trento p Pb 1000000 --cross-section 7.1 | gzip > pPb.dat.gz
+   trento p Pb 1000 --cross-section 7.1 | gzip > pPb.dat.gz
 
 Suppress printing to stdout and save events to HDF5::
 
-   trento p Pb 1000000 --cross-section 7.1 --quiet --output events.hdf
+   trento p Pb 1000 --cross-section 7.1 --quiet --output events.hdf
 
 Uranium-uranium events at RHIC (smaller cross section) using short options::
 
-   trento U U 1000000 -x 4.2
+   trento U U 1000 -x 4.2
 
 Deformed gold-gold with an explicit nucleon width::
 
-   trento Au2 Au2 1000000 -x 4.2 -w 0.6
+   trento Au2 Au2 1000 -x 4.2 -w 0.6
 
 Simple sorting and selection (e.g. by centrality) can be achieved by combining standard Unix tools.
-For example, to run 1000 events, sort by centrality (multiplicity) and then select the top 10%::
+For example, this sorts by centrality (multiplicity) and selects the top 10%::
 
    trento Pb Pb 1000 | sort -rgk 4 | head -n 100
 
