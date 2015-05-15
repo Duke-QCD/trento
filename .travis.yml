@@ -10,9 +10,15 @@ install:
   - export CXX="g++-4.9"
 
 script:
-  - mkdir build
-  - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - mkdir -p build/{debug,release}
+  - cd build/debug
+  - cmake ../.. -DCMAKE_BUILD_TYPE=Debug
+  - make trento test-trento
+  - ./test/test-trento --success
+  - ./src/trento p Pb 10
+  - ./src/trento Cu2 Au2 10
+  - cd ../release
+  - cmake ../.. -DCMAKE_BUILD_TYPE=Release
   - make trento test-trento
   - ./test/test-trento --success
   - ./src/trento p Pb 10
