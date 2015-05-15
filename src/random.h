@@ -8,6 +8,10 @@
 #include <limits>
 #include <random>
 
+#include <boost/math/constants/constants.hpp>
+
+#include "fwd_decl.h"
+
 namespace trento { namespace random {
 
 /// Mersenne Twister engine, 64-bit preset.
@@ -22,6 +26,18 @@ inline RealType canonical() {
   return std::generate_canonical
            <RealType, std::numeric_limits<RealType>::digits>
            (engine);
+}
+
+/// Sample a spherical polar angle cos(theta).
+template <typename RealType = double>
+inline double cos_theta() {
+  return 2 * canonical<RealType>() - 1;
+}
+
+/// Sample a spherical azimuthal angle phi.
+template <typename RealType = double>
+inline double phi() {
+  return math::constants::two_pi<RealType>() * canonical<RealType>();
 }
 
 }}  // namespace trento::random

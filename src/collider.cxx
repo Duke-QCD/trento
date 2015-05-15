@@ -99,7 +99,7 @@ double Collider::sample_impact_param() {
 
   do {
     // Sample b from P(b)db = 2*pi*b.
-    b = bmin_ + (bmax_ - bmin_) * std::sqrt(random::canonical<>());
+    b = bmin_ + (bmax_ - bmin_) * std::sqrt(random::canonical<double>());
 
     // Offset each nucleus depending on the asymmetry parameter (see header).
     nucleusA_->sample_nucleons(asymmetry_ * b);

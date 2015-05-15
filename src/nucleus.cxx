@@ -78,19 +78,18 @@ double WoodsSaxonNucleus::radius() const {
 void WoodsSaxonNucleus::sample_nucleons(double offset) {
   for (auto&& nucleon : *this) {
     // Sample spherical radius from Woods-Saxon distribution.
-    double r = woods_saxon_dist_(random::engine);
+    auto r = woods_saxon_dist_(random::engine);
 
     // Sample isotropic spherical angles.
-    double cos_theta = 2. * random::canonical<>() - 1.;
-    double phi = math::double_constants::two_pi * random::canonical<>();
-
-    double r_sin_theta = r * std::sqrt(1. - cos_theta*cos_theta);
+    auto cos_theta = random::cos_theta<double>();
+    auto phi = random::phi<double>();
 
     // Convert to transverse Cartesian coordinates
-    double x = r_sin_theta * std::cos(phi) + offset;
-    double y = r_sin_theta * std::sin(phi);
+    auto r_sin_theta = r * std::sqrt(1. - cos_theta*cos_theta);
+    auto x = r_sin_theta * std::cos(phi);
+    auto y = r_sin_theta * std::sin(phi);
 
-    set_nucleon_position(nucleon, x, y);
+    set_nucleon_position(nucleon, x + offset, y);
   }
   // XXX: re-center nucleon positions?
 }
@@ -146,39 +145,39 @@ void DeformedWoodsSaxonNucleus::sample_nucleons(double offset) {
   //  - an azimuthal "spin", i.e. rotation about the original Z axis
 
   // "tilt" angle
-  const double cos_a = 2. * random::canonical<>() - 1.;
-  const double sin_a = std::sqrt(1. - cos_a*cos_a);
+  const auto cos_a = random::cos_theta<double>();
+  const auto sin_a = std::sqrt(1. - cos_a*cos_a);
 
   // "spin" angle
-  const double angle_b = math::double_constants::two_pi * random::canonical<>();
-  const double cos_b = std::cos(angle_b);
-  const double sin_b = std::sin(angle_b);
+  const auto angle_b = random::phi<double>();
+  const auto cos_b = std::cos(angle_b);
+  const auto sin_b = std::sin(angle_b);
 
   for (auto&& nucleon : *this) {
     // Sample (r, theta) using a standard rejection method.
     // Remember to include the phase-space factors.
     double r, cos_theta;
     do {
-      r = rmax_ * std::cbrt(random::canonical<>());
-      cos_theta = 2. * random::canonical<>() - 1.;
-    } while (random::canonical<>() > deformed_woods_saxon_dist(r, cos_theta));
+      r = rmax_ * std::cbrt(random::canonical<double>());
+      cos_theta = random::cos_theta<double>();
+    } while (random::canonical<double>() > deformed_woods_saxon_dist(r, cos_theta));
 
     // Sample azimuthal angle.
-    double phi = math::double_constants::two_pi * random::canonical<>();
+    auto phi = random::phi<double>();
 
     // Convert to Cartesian coordinates.
-    double r_sin_theta = r * std::sqrt(1. - cos_theta*cos_theta);
-    double x = r_sin_theta * std::cos(phi);
-    double y = r_sin_theta * std::sin(phi);
-    double z = r * cos_theta;
+    auto r_sin_theta = r * std::sqrt(1. - cos_theta*cos_theta);
+    auto x = r_sin_theta * std::cos(phi);
+    auto y = r_sin_theta * std::sin(phi);
+    auto z = r * cos_theta;
 
     // Rotate.
     // The rotation formula was derived by composing the "tilt" and "spin"
     // rotations described above.
-    double x_rot = x*cos_b - y*cos_a*sin_b + z*sin_a*sin_b + offset;
-    double y_rot = x*sin_b + y*cos_a*cos_b - z*sin_a*cos_b;
+    auto x_rot = x*cos_b - y*cos_a*sin_b + z*sin_a*sin_b;
+    auto y_rot = x*sin_b + y*cos_a*cos_b - z*sin_a*cos_b;
 
-    set_nucleon_position(nucleon, x_rot, y_rot);
+    set_nucleon_position(nucleon, x_rot + offset, y_rot);
   }
 }
 

@@ -186,7 +186,7 @@ inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
       -std::exp(cross_sec_param_ - .25*distance_sqr/width_sqr_));
 
   // Sample one random number and decide if this pair participates.
-  if (one_minus_prob < random::canonical<>()) {
+  if (one_minus_prob < random::canonical<double>()) {
     A.set_participant();
     B.set_participant();
     return true;
