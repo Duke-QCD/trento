@@ -78,6 +78,7 @@ U       uranium  238           yes
 ======  =======  ============  ========
 
 All species except the proton sample nucleons from a `Woods-Saxon <https://en.wikipedia.org/wiki/Woods%E2%80%93Saxon_potential>`_ distribution, either spherically symmetric or deformed as indicated.
+Copper and gold are slightly deformed—slightly enough that a symmetric distribution is a reasonable approximation—therefore both symmetric (``Cu``, ``Au``) and deformed (``Cu2``, ``Au2``) versions are provided, where both versions have the same nuclear radius and surface thickness.
 The naming convention and Woods-Saxon parameters follow the `PHOBOS Glauber <http://inspirehep.net/record/1310629>`_ model.
 
 General options
@@ -104,8 +105,14 @@ The default output mode is to print event-by-event properties to stdout, in the 
 
    event_number impact_param npart mult e2 e3 e4 e5
 
-with one line for each event.
-``mult`` is the total initial entropy and the ``en`` are eccentricity harmonics ɛ\ :sub:`n`.
+with one line for each event, where
+
+- ``event_number`` is an integer counter,
+- ``impact_param`` is the collision impact parameter,
+- ``npart`` is the number of nucleon participants,
+- ``mult`` is the total initial entropy, and
+- the ``en`` are the eccentricity harmonics ɛ\ :sub:`n`.
+
 This format is designed for easy parsing, redirection to files, etc.
 
 By default, the actual initial entropy profiles (grids) are not output.
@@ -340,7 +347,7 @@ It can be sorted and selected using numpy indexing, for example to sort by centr
 .. code:: python
 
    data_sorted = data[data[:, 3].argsort()[::-1]]
-   central = data[:100]
+   central = data_sorted[:100]
 
 Text files are easily read by ``np.loadtxt``.
 The header will be ignored by default, so this is all it takes to read and plot a profile:
@@ -353,21 +360,31 @@ The header will be ignored by default, so this is all it takes to read and plot 
    plt.imshow(profile, interpolation='none', cmap=plt.cm.Blues)
 
 Reading HDF5 files requires `h5py <http://www.h5py.org>`_.
+``h5py`` file objects have a dictionary-like interface where the keys are the event names (``event_0``, ``event_1``, ...) and the values are HDF5 datasets.
+Datasets can implicitly or explicitly convert to numpy arrays, and the ``attrs`` object provides access to the event properties.
 Simple example:
 
 .. code:: python
 
    import h5py
 
-   h5file = h5py.File('events.hdf')
-   dataset = h5file['event_0']
+   # open an HDF5 file for reading
+   with h5py.File('events.hdf', 'r') as f:
+      # get the first event from the file
+      ev = f['event_0']
 
-   # extract the grid
-   profile = dataset[:]
+      # plot the profile
+      plt.imshow(ev, interpolation='none', cmap=plt.cm.Blues)
 
-   # read event properties
-   mult = dataset.attrs['mult']
-   e2 = dataset.attrs['e2']
+      # extract the profile as a numpy array
+      profile = np.array(ev)
+
+      # read event properties
+      mult = ev.attrs['mult']
+      e2 = ev.attrs['e2']
+
+      # sort by centrality
+      sorted_events = sorted(f.values(), key=lambda x: x.attrs['mult'], reverse=True)
 
 Attribution
 -----------
