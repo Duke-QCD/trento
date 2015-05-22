@@ -37,11 +37,15 @@ NucleusPtr Nucleus::create(const std::string& species) {
     throw std::invalid_argument{"unknown projectile species: " + species};
 }
 
-Nucleus::Nucleus(std::size_t A) : nucleons_(A) {}
+Nucleus::Nucleus(std::size_t A) : nucleons_(A), offset_(0) {}
 
-template <typename... Args>
-void Nucleus::set_nucleon_position(Nucleon& nucleon, Args&&... args) {
-  nucleon.set_position(std::forward<Args>(args)...);
+void Nucleus::sample_nucleons(double offset) {
+  offset_ = offset;
+  sample_nucleons_impl();
+}
+
+void Nucleus::set_nucleon_position(Nucleon& nucleon, double x, double y) {
+  nucleon.set_position(x + offset_, y);
 }
 
 Proton::Proton() : Nucleus(1) {}
@@ -51,9 +55,9 @@ double Proton::radius() const {
   return 0.;
 }
 
-/// Always place the nucleon at (x, y) = (offset, 0).
-void Proton::sample_nucleons(double offset) {
-  set_nucleon_position(*begin(), offset,  0.);
+/// Always place the nucleon at the origin.
+void Proton::sample_nucleons_impl() {
+  set_nucleon_position(*begin(), 0., 0.);
 }
 
 // Extend the W-S dist out to R + 10a; for typical values of (R, a), the
@@ -75,7 +79,7 @@ double WoodsSaxonNucleus::radius() const {
 }
 
 /// Sample uncorrelated Woods-Saxon nucleon positions.
-void WoodsSaxonNucleus::sample_nucleons(double offset) {
+void WoodsSaxonNucleus::sample_nucleons_impl() {
   for (auto&& nucleon : *this) {
     // Sample spherical radius from Woods-Saxon distribution.
     auto r = woods_saxon_dist_(random::engine);
@@ -89,7 +93,7 @@ void WoodsSaxonNucleus::sample_nucleons(double offset) {
     auto x = r_sin_theta * std::cos(phi);
     auto y = r_sin_theta * std::sin(phi);
 
-    set_nucleon_position(nucleon, x + offset, y);
+    set_nucleon_position(nucleon, x, y);
   }
   // XXX: re-center nucleon positions?
 }
@@ -132,7 +136,7 @@ double DeformedWoodsSaxonNucleus::deformed_woods_saxon_dist(
 }
 
 /// Sample uncorrelated deformed Woods-Saxon nucleon positions.
-void DeformedWoodsSaxonNucleus::sample_nucleons(double offset) {
+void DeformedWoodsSaxonNucleus::sample_nucleons_impl() {
   // The deformed W-S distribution is defined so the symmetry axis is aligned
   // with the Z axis, so e.g. the long axis of uranium coincides with Z.
   //
@@ -177,7 +181,7 @@ void DeformedWoodsSaxonNucleus::sample_nucleons(double offset) {
     auto x_rot = x*cos_b - y*cos_a*sin_b + z*sin_a*sin_b;
     auto y_rot = x*sin_b + y*cos_a*cos_b - z*sin_a*cos_b;
 
-    set_nucleon_position(nucleon, x_rot + offset, y_rot);
+    set_nucleon_position(nucleon, x_rot, y_rot);
   }
 }
 

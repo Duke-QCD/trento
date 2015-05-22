@@ -9,10 +9,12 @@ Collider
 Event
 -----
 .. doxygenclass:: trento::Event
+   :members:
 
 Output
 ------
 .. doxygenclass:: trento::Output
+   :members:
 
 Nucleus
 -------
@@ -24,17 +26,8 @@ Nucleus
 
 Nucleus types
 ~~~~~~~~~~~~~
-
-Proton
-''''''
 .. doxygenclass:: trento::Proton
-
-Woods-Saxon
-'''''''''''
 .. doxygenclass:: trento::WoodsSaxonNucleus
-
-Deformed Woods-Saxon
-''''''''''''''''''''
 .. doxygenclass:: trento::DeformedWoodsSaxonNucleus
 
 Nucleon
@@ -45,7 +38,9 @@ Nucleon
 Nucleon profile
 ---------------
 .. doxygenclass:: trento::NucleonProfile
+   :members:
 
 Fast exponential
 ----------------
 .. doxygenclass:: trento::FastExp
+   :members:

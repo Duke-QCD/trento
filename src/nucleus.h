@@ -58,9 +58,9 @@ class Nucleus {
   /// placed.
   virtual double radius() const = 0;
 
-  /// Sample a new ensemble of nucleon positions.
-  /// \param offset shift for each \em x position
-  virtual void sample_nucleons(double offset) = 0;
+  /// Sample a new ensemble of nucleon positions with the given offset in the
+  /// x-direction.
+  void sample_nucleons(double offset);
 
   using iterator = std::vector<Nucleon>::iterator;
   using const_iterator = std::vector<Nucleon>::const_iterator;
@@ -89,18 +89,35 @@ class Nucleus {
   explicit Nucleus(std::size_t A);
 
   /// \rst
-  /// Set a ``Nucleon`` position.  Perfect-forwards arguments to
-  /// ``Nucleon::set_position``.  Implemented this way because while ``Nucleus``
-  /// is a friend of ``Nucleon``, its derived classes are not.  This grants
-  /// limited access to the derived classes.
+  /// Set a ``Nucleon`` position.  This function provides a consistent interface
+  /// to derived classes and ensures the position is correctly offset.
+  /// ``Nucleus`` is a friend of ``Nucleon`` and therefore able to set nucleon
+  /// positions; the derived classes must use this function to set positions.
   /// \endrst
-  template <typename... Args>
-  void set_nucleon_position(Nucleon& nucleon, Args&&... args);
+  void set_nucleon_position(Nucleon& nucleon, double x, double y);
 
  private:
+  /// Internal interface to the actual implementation of the nucleon sampling
+  /// algorithm, used in public function sample_nucleons().  This function must
+  /// sample nucleon positions relative to the origin and set them using the
+  /// protected function set_nucleon_position(), which enforces the offset.
+  virtual void sample_nucleons_impl() = 0;
+
   /// Internal storage of Nucleon objects.
   std::vector<Nucleon> nucleons_;
+
+  /// Offset of nucleon x-positions.
+  /// This variable is reset upon each call of sample_nucleons() and is read by
+  /// set_nucleon_position().
+  double offset_;
 };
+
+// Now declare Nucleus subclasses.
+// Each subclass must do the following:
+//   - Define a public constructor which (at minimum) initializes a Nucleus
+//     with the required number of nucleons.
+//   - Override and implement the pure virtual functions
+//     radius() and sample_nucleons_impl().
 
 /// Trivial nucleus with a single nucleon.
 class Proton : public Nucleus {
@@ -108,9 +125,12 @@ class Proton : public Nucleus {
   /// Default constructor.
   Proton();
 
+  /// The radius of a proton is trivially zero.
   virtual double radius() const override;
 
-  virtual void sample_nucleons(double offset) override;
+ private:
+  /// The proton trivially places its nucleon at the origin.
+  virtual void sample_nucleons_impl() override;
 };
 
 /// \rst
@@ -131,17 +151,19 @@ class WoodsSaxonNucleus : public Nucleus {
   /// \param a Woods-Saxon surface thickness
   WoodsSaxonNucleus(std::size_t A, double R, double a);
 
+  /// The radius of a Woods-Saxon Nucleus is computed from the parameters (R, a).
   virtual double radius() const override;
 
-  virtual void sample_nucleons(double offset) override;
-
  private:
-  /// W-S parameters.
+  /// Sample Woods-Saxon nucleon positions.
+  virtual void sample_nucleons_impl() override;
+
+  /// Woods-Saxon parameters.
   const double R_, a_;
 
-  /// W-S distribution object.  Since the dist does not have an analytic inverse
-  /// CDF, approximate it as a piecewise linear dist.  For a large number of
-  /// steps this is very accurate.
+  /// Woods-Saxon distribution object.  Since the dist does not have an analytic
+  /// inverse CDF, approximate it as a piecewise linear dist.  For a large
+  /// number of steps this is very accurate.
   mutable std::piecewise_linear_distribution<double> woods_saxon_dist_;
 };
 
@@ -167,15 +189,18 @@ class DeformedWoodsSaxonNucleus : public Nucleus {
   DeformedWoodsSaxonNucleus(std::size_t A, double R, double a,
                             double beta2, double beta4);
 
+  /// The radius of a deformed Woods-Saxon Nucleus is computed from the
+  /// parameters (R, a, beta2, beta4).
   virtual double radius() const override;
 
-  virtual void sample_nucleons(double offset) override;
-
  private:
+  /// Sample deformed Woods-Saxon nucleon positions.
+  virtual void sample_nucleons_impl() override;
+
   /// Evaluate the deformed Woods-Saxon distribution.
   double deformed_woods_saxon_dist(double r, double cos_theta) const;
 
-  /// W-S parameters.
+  /// Woods-Saxon parameters.
   const double R_, a_, beta2_, beta4_;
 
   /// Maximum radius.

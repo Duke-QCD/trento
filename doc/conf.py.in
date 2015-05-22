@@ -10,7 +10,6 @@ extensions = ['breathe', 'sphinx.ext.mathjax']
 breathe_projects = {project: '@CMAKE_CURRENT_BINARY_DIR@/doxyxml'}
 breathe_default_project = project
 breathe_implementation_filename_extensions = ['.cxx']
-breathe_default_members = ['members']
 
 source_suffix = '.rst'
 master_doc = 'index'
