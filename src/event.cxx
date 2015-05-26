@@ -148,22 +148,24 @@ void Event::compute_nuclear_thickness(
 template <typename GenMean>
 void Event::compute_reduced_thickness(GenMean gen_mean) {
   double sum = 0.;
-  double xcm = 0.;
-  double ycm = 0.;
+  double ixcm = 0.;
+  double iycm = 0.;
 
   for (int iy = 0; iy < nsteps_; ++iy) {
     for (int ix = 0; ix < nsteps_; ++ix) {
       auto t = norm_ * gen_mean(TA_[iy][ix], TB_[iy][ix]);
       TR_[iy][ix] = t;
       sum += t;
-      xcm += t * static_cast<double>(ix);
-      ycm += t * static_cast<double>(iy);
+      // Center of mass grid indices.
+      // No need to multiply by dxy since it would be canceled later.
+      ixcm += t * static_cast<double>(ix);
+      iycm += t * static_cast<double>(iy);
     }
   }
 
   multiplicity_ = dxy_ * dxy_ * sum;
-  xcm_ = xcm / sum;
-  ycm_ = ycm / sum;
+  ixcm_ = ixcm / sum;
+  iycm_ = iycm / sum;
 }
 
 void Event::compute_observables() {
@@ -185,12 +187,12 @@ void Event::compute_observables() {
         continue;
 
       // Compute (x, y) relative to the CM and cache powers of x, y, r.
-      auto x = static_cast<double>(ix) - xcm_;
+      auto x = static_cast<double>(ix) - ixcm_;
       auto x2 = x*x;
       auto x3 = x2*x;
       auto x4 = x2*x2;
 
-      auto y = static_cast<double>(iy) - ycm_;
+      auto y = static_cast<double>(iy) - iycm_;
       auto y2 = y*y;
       auto y3 = y2*y;
       auto y4 = y2*y2;

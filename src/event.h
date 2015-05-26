@@ -118,8 +118,8 @@ class Event {
   /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
   Grid TA_, TB_, TR_;
 
-  /// Center of mass coordinates.
-  double xcm_, ycm_;
+  /// Center of mass coordinates in "units" of grid index (not fm).
+  double ixcm_, iycm_;
 
   /// Number of participants.
   int npart_;
