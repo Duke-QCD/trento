@@ -29,7 +29,8 @@ TEST_CASE( "collider" ) {
     {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
-    {"nucleon-width", 0.5}
+    {"nucleon-width", 0.5},
+    {"deposition-width", 0.5}
   });
 
   std::vector<int> nevent, npart;
@@ -90,7 +91,8 @@ TEST_CASE( "fixed impact parameter" ) {
     {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
-    {"nucleon-width", 0.5}
+    {"nucleon-width", 0.5},
+    {"deposition-width", 0.5}
   });
 
   std::vector<double> impact;
@@ -133,7 +135,8 @@ TEST_CASE( "random seed" ) {
         {"grid-step", 0.3},
         {"fluctuation", 1.},
         {"cross-section", 6.4},
-        {"nucleon-width", 0.5}
+        {"nucleon-width", 0.5},
+        {"deposition-width", 0.5}
       })};
 
       capture_stdout capture;

@@ -18,12 +18,16 @@ TEST_CASE( "nucleon" ) {
   auto fluct = 1. + .5*random::canonical<>();
   auto xsec = 4. + 3.*random::canonical<>();
   auto width = .5 + .2*random::canonical<>();
-  auto wsq = width*width;
+  auto dwidth = .5 + .2*random::canonical<>();
+
+  auto widthsq = width*width;
+  auto dwidthsq = dwidth*dwidth;
 
   auto var_map = make_var_map({
       {"fluctuation",   fluct},
       {"cross-section", xsec},
       {"nucleon-width", width},
+      {"deposition-width", dwidth},
   });
 
   NucleonProfile profile{var_map};
@@ -31,16 +35,16 @@ TEST_CASE( "nucleon" ) {
 
   // truncation radius
   auto R = profile.radius();
-  CHECK( R == Approx(5*width) );
+  CHECK( R == Approx(5*dwidth) );
 
   // thickness function
   // check relative to zero
   auto tzero = profile.thickness(0.);
-  CHECK( profile.thickness(wsq) == Approx(tzero*std::exp(-.5)) );
+  CHECK( profile.thickness(dwidthsq) == Approx(tzero*std::exp(-.5)) );
 
   // random point inside radius
   auto dsq = std::pow(R*random::canonical<>(), 2);
-  CHECK( profile.thickness(dsq) == Approx(tzero*std::exp(-.5*dsq/wsq)) );
+  CHECK( profile.thickness(dsq) == Approx(tzero*std::exp(-.5*dsq/dwidthsq)) );
 
   // random point outside radius
   dsq = std::pow(R*(1+random::canonical<>()), 2);
@@ -52,7 +56,7 @@ TEST_CASE( "nucleon" ) {
   auto n = 1e6;
   for (auto i = 0; i < static_cast<int>(n); ++i) {
     profile.fluctuate();
-    total += profile.thickness(0.) * (2*M_PI*wsq);
+    total += profile.thickness(0.) * (2*M_PI*dwidthsq);
   }
 
   auto mean = total/n;
@@ -110,17 +114,19 @@ TEST_CASE( "nucleon" ) {
       {"fluctuation",   1e12},
       {"cross-section", xsec},
       {"nucleon-width", width},
+      {"deposition-width", dwidth},
   });
 
   NucleonProfile no_fluct_profile{no_fluct_var_map};
   no_fluct_profile.fluctuate();
-  CHECK( no_fluct_profile.thickness(0) == Approx(1/(2*M_PI*wsq)) );
+  CHECK( no_fluct_profile.thickness(0) == Approx(1/(2*M_PI*dwidthsq)) );
 
   // nucleon width too small
   auto bad_var_map = make_var_map({
       {"fluctuation",   1.},
       {"cross-section", 5.},
       {"nucleon-width", .1},
+      {"deposition-width", .5},
   });
   CHECK_THROWS_AS( NucleonProfile bad_profile{bad_var_map}, std::domain_error );
 }

@@ -52,7 +52,7 @@ constexpr T sqr(T value) {
 double compute_cross_sec_param(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
-  auto width =  var_map["nucleon-width"].as<double>();
+  auto width = var_map["nucleon-width"].as<double>();
 
   // TODO: automatically set from beam energy
   // if (sigma_nn < 0.) {
@@ -102,14 +102,15 @@ double compute_cross_sec_param(const VarMap& var_map) {
 }  // unnamed namespace
 
 NucleonProfile::NucleonProfile(const VarMap& var_map)
-    : width_sqr_(sqr(var_map["nucleon-width"].as<double>())),
-      trunc_radius_sqr_(sqr(trunc_radius_widths)*width_sqr_),
-      max_impact_sqr_(sqr(max_impact_widths)*width_sqr_),
-      neg_one_div_two_width_sqr_(-.5/width_sqr_),
+    : interaction_width_sqr_(sqr(var_map["nucleon-width"].as<double>())),
+      deposition_width_sqr_(sqr(var_map["deposition-width"].as<double>())),
+      max_impact_sqr_(sqr(max_impact_widths)*interaction_width_sqr_),
+      trunc_radius_sqr_(sqr(trunc_radius_widths)*deposition_width_sqr_),
+      neg_one_div_two_width_sqr_(-.5/deposition_width_sqr_),
       cross_sec_param_(compute_cross_sec_param(var_map)),
       fast_exp_(-.5*sqr(trunc_radius_widths), 0., 1000),
       fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
-      prefactor_(math::double_constants::one_div_two_pi/width_sqr_)
+      prefactor_(math::double_constants::one_div_two_pi/deposition_width_sqr_)
 {}
 
 }  // namespace trento

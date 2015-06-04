@@ -193,16 +193,21 @@ In particular, **the cross section must be explicitly set for each beam energy**
 
    .. image:: http://latex2png.com/output//latex_0c9ba0458eb84402a2a0fe505dc7164d.png
 
+   This is the profile used for sampling nucleon participants.
    The default is 0.5 fm.
-   A reasonable range is roughly 0.4–0.8 fm.
 
--n, --normalization FLOAT
-   Overall normalization factor.
-   The default is 1.
+-d, --deposition-width FLOAT
+   The *effective* Gaussian nucleon width at the thermalization time.
+   This is the profile used to construct the thickness functions.
+   The default is 0.5 fm.
 
 -x, --cross-section FLOAT
    Inelastic nucleon-nucleon cross section σ\ :sub:`NN` in fm\ :sup:`2`.
    The default is 6.4 fm\ :sup:`2`, which is the approximate experimental value at LHC energy, √s = 2.76 TeV.
+
+-n, --normalization FLOAT
+   Overall normalization factor.
+   The default is 1.
 
 --b-min FLOAT
    Minimum impact parameter.

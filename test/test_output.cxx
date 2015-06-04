@@ -27,7 +27,8 @@ TEST_CASE( "output" ) {
     {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
-    {"nucleon-width", 0.5}
+    {"nucleon-width", 0.5},
+    {"deposition-width", 0.5}
   });
 
   // create a test event
