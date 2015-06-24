@@ -40,6 +40,22 @@ TEST_CASE( "proton" ) {
   CHECK( !proton.is_participant() );
 }
 
+TEST_CASE( "deuteron" ) {
+  auto nucleus = Nucleus::create("d");
+
+  CHECK( dynamic_cast<Deuteron*>(nucleus.get()) != nullptr );
+
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == 2 );
+  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == 2 );
+
+  nucleus->sample_nucleons(0);
+
+  CHECK( nucleus->cbegin()->x() == -std::next(nucleus->cbegin())->x() );
+  CHECK( nucleus->cbegin()->y() == -std::next(nucleus->cbegin())->y() );
+
+  CHECK( nucleus->radius() == Approx(-std::log(.01)/(2*0.457)) );
+}
+
 TEST_CASE( "lead nucleus" ) {
   auto nucleus = Nucleus::create("Pb");
 

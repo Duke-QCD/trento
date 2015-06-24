@@ -134,6 +134,31 @@ class Proton : public Nucleus {
 };
 
 /// \rst
+/// Samples pairs of nucleons from the Hulthén wavefunction
+///
+/// .. math::
+///
+///   f(r) \propto \biggl( \frac{\exp(-ar) + \exp(-br)}{r} \biggr)^2.
+///
+/// \endrst
+class Deuteron : public Nucleus {
+ public:
+  /// Insantiate with values for the (a, b) parameters.
+  /// The defaults are from the PHOBOS Glauber model.
+  Deuteron(double a = 0.457, double b = 2.35);
+
+  /// The radius is computed from the parameters (a, b).
+  virtual double radius() const override;
+
+ private:
+  /// Sample positions from the Hulthén wavefunction.
+  virtual void sample_nucleons_impl() override;
+
+  /// Internal storage of wavefunction parameters.
+  const double a_, b_;
+};
+
+/// \rst
 /// Samples nucleons from a spherically symmetric Woods-Saxon distribution
 ///
 /// .. math::

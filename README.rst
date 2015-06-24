@@ -65,21 +65,23 @@ Specifying projectiles
 The ``projectile`` arguments take species abbreviations, e.g. ``p``, ``Pb``, etc.
 The known species are
 
-======  =======  ============  ========
-Symbol  Name     No. nucleons  Deformed
-======  =======  ============  ========
-p       proton   1             ---
-Cu      copper   62            no
-Cu2     copper   62            yes
-Au      gold     197           no
-Au2     gold     197           yes
-Pb      lead     208           no
-U       uranium  238           yes
-======  =======  ============  ========
+======  ========  ============  ========
+Symbol  Name      No. nucleons  Deformed
+======  ========  ============  ========
+p       proton    1             ---
+d       deuteron  2             ---
+Cu      copper    62            no
+Cu2     copper    62            yes
+Au      gold      197           no
+Au2     gold      197           yes
+Pb      lead      208           no
+U       uranium   238           yes
+======  ========  ============  ========
 
-All species except the proton sample nucleons from a `Woods-Saxon <https://en.wikipedia.org/wiki/Woods%E2%80%93Saxon_potential>`_ distribution, either spherically symmetric or deformed as indicated.
+For the deuteron, nucleon positions are sampled from the Hulthén wavefunction;
+for the heavy nuclei, positions are sampled from a `Woods-Saxon <https://en.wikipedia.org/wiki/Woods%E2%80%93Saxon_potential>`_ distribution, either spherically symmetric or deformed as indicated.
 Copper and gold are slightly deformed—slightly enough that a symmetric distribution is a reasonable approximation—therefore both symmetric (``Cu``, ``Au``) and deformed (``Cu2``, ``Au2``) versions are provided, where both versions have the same nuclear radius and surface thickness.
-The naming convention and Woods-Saxon parameters follow the `PHOBOS Glauber <http://inspirehep.net/record/1310629>`_ model.
+The naming convention, Hulthén wavefunction, and Woods-Saxon parameters follow the `PHOBOS Glauber <http://inspirehep.net/record/1310629>`_ model.
 
 General options
 ~~~~~~~~~~~~~~~

@@ -27,6 +27,7 @@ Nucleus
 Nucleus types
 ~~~~~~~~~~~~~
 .. doxygenclass:: trento::Proton
+.. doxygenclass:: trento::Deuteron
 .. doxygenclass:: trento::WoodsSaxonNucleus
 .. doxygenclass:: trento::DeformedWoodsSaxonNucleus
 

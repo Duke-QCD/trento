@@ -18,9 +18,11 @@ namespace trento {
 
 NucleusPtr Nucleus::create(const std::string& species) {
   // W-S params ref. in header
-  // XXX: remember to add new species to the help output in main()
+  // XXX: remember to add new species to the help output in main() and the readme
   if (species == "p")
     return NucleusPtr{new Proton{}};
+  else if (species == "d")
+    return NucleusPtr{new Deuteron{}};
   else if (species == "Cu")
     return NucleusPtr{new WoodsSaxonNucleus{62, 4.2, 0.596}};
   else if (species == "Cu2")
@@ -58,6 +60,57 @@ double Proton::radius() const {
 /// Always place the nucleon at the origin.
 void Proton::sample_nucleons_impl() {
   set_nucleon_position(*begin(), 0., 0.);
+}
+
+// Without loss of generality, let the internal a_ parameter be the minimum of
+// the given (a, b) and the internal b_ be the maximum.
+Deuteron::Deuteron(double a, double b)
+    : Nucleus(2),
+      a_(std::fmin(a, b)),
+      b_(std::fmax(a, b))
+{}
+
+double Deuteron::radius() const {
+  // The quantile function for the exponential distribution exp(-2*a*r) is
+  // -log(1-q)/(2a).  Return the 99% quantile.
+  return -std::log(.01)/(2*a_);
+}
+
+void Deuteron::sample_nucleons_impl() {
+  // Sample the inter-nucleon radius using rejection sampling with an envelope
+  // function.  The Hulthén wavefunction including the r^2 Jacobian is a sum of
+  // three exponential terms:  exp(-2*a*r) + exp(-2*b*r) + 2*exp(-(a+b)*r).
+  // This does not have a closed-form inverse CDF, however we can easily sample
+  // exponential numbers from the term that falls off the slowest, i.e.
+  // exp(-2*min(a,b)*r).  In the ctor initializer list the "a" parameter is
+  // always set to the minimum, so we should sample from exp(-2*a*r).
+  double r, prob;
+  do {
+    // Sample a uniform random number, u = exp(-2*a*r).
+    auto u = random::canonical<double>();
+    // Invert to find the actual radius.
+    r = -std::log(u) / (2*a_);
+    // The acceptance probability is now the radial wavefunction over the
+    // envelope function, both evaluated at the proposal radius r.
+    // Conveniently, the envelope evaluated at r is just the uniform random
+    // number u.  Also divide by the wavefunctions max value (4) so that the
+    // probability is always <= 1.
+    prob = std::pow(std::exp(-a_*r) + std::exp(-b_*r), 2) / (4*u);
+  } while (prob < random::canonical<double>());
+
+  // Now sample spherical rotation angles.
+  auto cos_theta = random::cos_theta<double>();
+  auto phi = random::phi<double>();
+
+  // And compute the transverse coordinates of one nucleon.
+  auto r_sin_theta = r * std::sqrt(1. - cos_theta*cos_theta);
+  auto x = r_sin_theta * std::cos(phi);
+  auto y = r_sin_theta * std::sin(phi);
+
+  // Place the first nucleon at the sampled coordinates (x, y).
+  set_nucleon_position(*begin(), x, y);
+  // Place the second nucleon opposite to the first, at (-x, -y).
+  set_nucleon_position(*std::next(begin()), -x, -y);
 }
 
 // Extend the W-S dist out to R + 10a; for typical values of (R, a), the
