@@ -399,8 +399,8 @@ The BibTeX entry is::
    @article{Moreland:2014oya,
          author         = "Moreland, J. Scott and Bernhard, Jonah E. and Bass,
                            Steffen A.",
-         title          = "{An effective model for entropy deposition in high-energy
-                           pp, pA, and AA collisions}",
+         title          = "{Alternative ansatz to wounded nucleon and binary
+                           collision scaling in high-energy nuclear collisions}",
          year           = "2014",
          eprint         = "1412.4708",
          archivePrefix  = "arXiv",
