@@ -138,7 +138,9 @@ class Proton : public Nucleus {
 ///
 /// .. math::
 ///
-///   f(r) \propto \biggl( \frac{\exp(-ar) + \exp(-br)}{r} \biggr)^2.
+///   f(r) \propto \biggl( \frac{\exp(-ar) - \exp(-br)}{r} \biggr)^2.
+///
+/// http://inspirehep.net/record/1261055
 ///
 /// \endrst
 class Deuteron : public Nucleus {
