@@ -14,7 +14,7 @@ Prerequisites:
 
 - `CMake <http://www.cmake.org>`_ 2.8+
 - A `C++11 compiler <http://en.cppreference.com/w/cpp/compiler_support>`_ (preferably GCC 4.8+ or Clang 3.3+)
-- The `Boost <http://www.boost.org>`_ C++ libraries, including runtime components  ``filesystem`` and ``program_options``
+- The `Boost <http://www.boost.org>`_ C++ libraries 1.50+, including runtime components  ``filesystem`` and ``program_options``
 - (optional) The `HDF5 <http://www.hdfgroup.org/HDF5>`_ C++ library
 
 All these dependencies are readily available on any operating system.
