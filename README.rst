@@ -6,7 +6,7 @@ T\ :sub:`R`\ ENTo
   :target: https://travis-ci.org/Duke-QCD/trento
 
 T\ :sub:`R`\ ENTo is a simple, fast model for the initial conditions of high-energy nuclear collisions (pp, pA, AA).
-`arXiv:1412.4708 [nucl-th] <http://inspirehep.net/record/1334386>`_ formally presents the model and preliminary results.
+`PRC 92 011901 <http://journals.aps.org/prc/abstract/10.1103/PhysRevC.92.011901>`_ / `arXiv:1412.4708 [nucl-th] <http://inspirehep.net/record/1334386>`_ formally presents the model and preliminary results.
 
 Installation
 ------------
@@ -403,7 +403,12 @@ The BibTeX entry is::
                            Steffen A.",
          title          = "{Alternative ansatz to wounded nucleon and binary
                            collision scaling in high-energy nuclear collisions}",
-         year           = "2014",
+         journal        = "Phys.Rev.",
+         number         = "1",
+         volume         = "C92",
+         pages          = "011901",
+         doi            = "10.1103/PhysRevC.92.011901",
+         year           = "2015",
          eprint         = "1412.4708",
          archivePrefix  = "arXiv",
          primaryClass   = "nucl-th",
