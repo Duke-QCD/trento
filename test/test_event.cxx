@@ -23,7 +23,6 @@ TEST_CASE( "event" ) {
     auto norm = 1. + .5*random::canonical<>();
     auto xsec = 4. + 3.*random::canonical<>();
     auto nucleon_width = .5 + .2*random::canonical<>();
-    auto deposition_width = .5 + .2*random::canonical<>();
 
     // Effectively disable fluctuations to deterministically compute thickness.
     auto fluct = 1e12;
@@ -41,7 +40,6 @@ TEST_CASE( "event" ) {
         {"fluctuation",   fluct},
         {"cross-section", xsec},
         {"nucleon-width", nucleon_width},
-        {"deposition-width", deposition_width}
     });
 
     Event event{var_map};

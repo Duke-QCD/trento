@@ -195,12 +195,6 @@ In particular, **the cross section must be explicitly set for each beam energy**
 
    .. image:: http://latex2png.com/output//latex_0c9ba0458eb84402a2a0fe505dc7164d.png
 
-   This is the profile used for sampling nucleon participants.
-   The default is 0.5 fm.
-
--d, --deposition-width FLOAT
-   The *effective* Gaussian nucleon width at the thermalization time.
-   This is the profile used to construct the thickness functions.
    The default is 0.5 fm.
 
 -x, --cross-section FLOAT

@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
   OptDesc output_opts{"output options"};
   output_opts.add_options()
     ("quiet,q", po::bool_switch(),
-     "do not print event properties\nto stdout")
+     "do not print event properties to stdout")
     ("output,o", po::value<fs::path>()->value_name("PATH"),
      "HDF5 file or directory for text files");
 
@@ -114,12 +114,9 @@ int main(int argc, char* argv[]) {
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
-    ("deposition-width,d",
-     po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
-     "effective Gaussian nucleon width [fm]\nat thermalization time")
     ("cross-section,x",
      po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
-     "inelastic nucleon-nucleon\ncross section sigma_NN [fm^2]")
+     "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
     ("normalization,n",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
      "normalization factor")
@@ -144,8 +141,7 @@ int main(int argc, char* argv[]) {
 
   // Make a meta-group containing all the option groups except the main
   // positional options (don't want the auto-generated usage info for those).
-  // Set max line length = 80 and min option description length = 39.
-  OptDesc usage_opts{"", 80, 39};
+  OptDesc usage_opts{};
   usage_opts
     .add(general_opts)
     .add(output_opts)

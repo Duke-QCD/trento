@@ -43,17 +43,14 @@ class NucleonProfile {
   bool participate(Nucleon& A, Nucleon& B) const;
 
  private:
-  /// Width of Gaussian interaction (participation) profile.
-  const double interaction_width_sqr_;
-
   /// Width of Gaussian thickness function.
-  const double deposition_width_sqr_;
+  const double width_sqr_;
+
+  /// Truncate the Gaussian at this radius.
+  const double trunc_radius_sqr_;
 
   /// Maximum impact parameter for participants.
   const double max_impact_sqr_;
-
-  /// Truncate the thickness function at this radius.
-  const double trunc_radius_sqr_;
 
   /// Cache (-1/2w^2) for use in the thickness function exponential.
   /// Yes, this actually makes a speed difference...
@@ -153,7 +150,7 @@ inline double NucleonProfile::max_impact() const {
 
 inline void NucleonProfile::fluctuate() {
   prefactor_ = fluct_dist_(random::engine) *
-     math::double_constants::one_div_two_pi / deposition_width_sqr_;
+     math::double_constants::one_div_two_pi / width_sqr_;
 }
 
 inline double NucleonProfile::thickness(double distance_sqr) const {
@@ -186,7 +183,7 @@ inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
   // or equivalently
   //   (1 - P) < U
   auto one_minus_prob = std::exp(
-      -std::exp(cross_sec_param_ - .25*distance_sqr/interaction_width_sqr_));
+      -std::exp(cross_sec_param_ - .25*distance_sqr/width_sqr_));
 
   // Sample one random number and decide if this pair participates.
   if (one_minus_prob < random::canonical<double>()) {
