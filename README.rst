@@ -65,23 +65,34 @@ Specifying projectiles
 The ``projectile`` arguments take species abbreviations, e.g. ``p``, ``Pb``, etc.
 The known species are
 
-======  ========  ============  ========
-Symbol  Name      No. nucleons  Deformed
-======  ========  ============  ========
-p       proton    1             ---
-d       deuteron  2             ---
-Cu      copper    62            no
-Cu2     copper    62            yes
-Au      gold      197           no
-Au2     gold      197           yes
-Pb      lead      208           no
-U       uranium   238           yes
-======  ========  ============  ========
+=========  ========  ============  ========
+Symbol     Name      No. nucleons  Deformed
+=========  ========  ============  ========
+p          proton    1             ---
+d          deuteron  2             ---
+Cu         copper    62            no
+Cu2        copper    62            yes
+Au         gold      197           no
+Au2        gold      197           yes
+Pb         lead      208           no
+U, U2, U3  uranium   238           yes
+=========  ========  ============  ========
 
 For the deuteron, nucleon positions are sampled from the Hulthén wavefunction;
 for the heavy nuclei, positions are sampled from a `Woods-Saxon <https://en.wikipedia.org/wiki/Woods%E2%80%93Saxon_potential>`_ distribution, either spherically symmetric or deformed as indicated.
 Copper and gold are slightly deformed—slightly enough that a symmetric distribution is a reasonable approximation—therefore both symmetric (``Cu``, ``Au``) and deformed (``Cu2``, ``Au2``) versions are provided, where both versions have the same nuclear radius and surface thickness.
-The naming convention, Hulthén wavefunction, and Woods-Saxon parameters follow the `PHOBOS Glauber <http://inspirehep.net/record/1310629>`_ model.
+There is no consensus on the uranium Woods-Saxon parameters, so three commonly used sets are provided:
+
+======  ====  ====  =============  =============
+Symbol  *R*   *a*   *β*\ :sub:`2`  *β*\ :sub:`4`
+======  ====  ====  =============  =============
+U       6.81  0.60  0.280          0.093
+U2      6.86  0.42  0.265          0
+U3      6.67  0.44  0.280          0.093
+======  ====  ====  =============  =============
+
+The ``U`` and ``U2`` sets are given in this recent `overview of particle production from PHENIX <http://inspirehep.net/record/1394433>`_.
+All other Woods-Saxon parameters (including ``U3``) and the Hulthén wavefunction parameters are from the `PHOBOS Glauber model <http://inspirehep.net/record/1310629>`_.
 
 General options
 ~~~~~~~~~~~~~~~
