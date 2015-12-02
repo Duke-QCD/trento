@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sphinx_bootstrap_theme
+import sphinx_rtd_theme
 
 project = 'trento'
 version = release = '@PROJECT_VERSION@'
@@ -16,7 +16,7 @@ master_doc = 'index'
 templates_path = ['@CMAKE_CURRENT_SOURCE_DIR@/_templates']
 
 primary_domain = 'cpp'
-highlight_language = 'cpp'
+highlight_language = 'python'
 default_role = 'math'
 pygments_style = 'sphinx'
 
@@ -24,20 +24,13 @@ html_domain_indices = False
 html_use_index = False
 html_static_path = ['@CMAKE_CURRENT_SOURCE_DIR@/_static']
 
-html_theme = 'bootstrap'
-html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
-html_theme_options = dict(
-    navbar_title='trento',
-    navbar_site_name='Site',
-    navbar_pagenav_name='Page',
-    navbar_sidebarrel=True,
-    navbar_pagenav=True,
-    navbar_class='navbar',
-    navbar_fixed_top='true',
-    # navbar_links=[()],
-    globaltoc_depth=2,
-    globaltoc_includehidden='true',
-    source_link_position='footer',
-    bootswatch_theme='flatly',
-    bootstrap_version='3',
+html_theme = 'sphinx_rtd_theme'
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_context = dict(
+    display_github=True,
+    github_user='Duke-QCD',
+    github_repo='trento',
+    github_version='master',
+    conf_py_path='/doc/',
+    source_suffix = source_suffix,
 )
