@@ -1,5 +1,7 @@
-Class list
-==========
+List of classes
+===============
+
+.. highlight:: cpp
 
 Collider
 --------
