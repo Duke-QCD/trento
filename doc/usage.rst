@@ -243,6 +243,8 @@ Regardless of the collision system, the code will always approximately center th
 
 Configuration files
 -------------------
+.. highlight:: ini
+
 All options may be saved in configuration files and passed to the program via the ``-c, --config-file`` option.
 Config files follow a simple ``key = value`` syntax, and lines beginning with a ``#`` are comments.
 The key for each option is its long option without the ``--`` prefix.

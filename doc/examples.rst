@@ -25,11 +25,11 @@ For example, this sorts by centrality (multiplicity) and selects the top 10%::
 
    trento Pb Pb 1000 | sort -rgk 4 | head -n 100
 
-Loading data into Python
-------------------------
-T\ :sub:`R`\ ENTo is not designed specifically to work with Python (it is designed to be maximally flexible), but Python is extremely powerful and the authors have extensive experience using it for data analysis.
+Working with Python
+-------------------
+The `scientific Python stack <https://www.scipy.org>`_ is ideal for analyzing T\ :sub:`R`\ ENTo data.
 
-One way to load event properties is to save them to a text file and then read it with ``np.loadtxt``.
+One way to load event properties into Python is to save them to a text file and then read it with ``np.loadtxt``.
 Here's a nice trick to avoid the temporary file:
 
 .. code:: python
@@ -37,9 +37,8 @@ Here's a nice trick to avoid the temporary file:
    import subprocess
    import numpy as np
 
-   proc = subprocess.Popen('trento Pb Pb 1000'.split(), stdout=subprocess.PIPE)
-   data = np.array([l.split() for l in proc.stdout], dtype=float)
-   proc.stdout.close()
+   with subprocess.Popen('trento Pb Pb 1000'.split(), stdout=subprocess.PIPE) as proc:
+      data = np.array([l.split() for l in proc.stdout], dtype=float)
 
 Now the ``data`` array contains the event properties.
 It can be sorted and selected using numpy indexing, for example to sort by centrality as before:
