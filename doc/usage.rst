@@ -172,8 +172,30 @@ These options control the physical behavior of the model.
    The default is 0.5 fm.
 
 ``-x, --cross-section FLOAT``
-   Inelastic nucleon-nucleon cross section σ\ :sub:`NN` in fm\ :sup:`2`.
-   The default is 6.4 fm\ :sup:`2`, which is the approximate experimental value at LHC energy, √s = 2.76 TeV.
+   Inelastic nucleon-nucleon cross section |snn| in |fm2|.
+   The default is 6.4 fm\ :sup:`2`, the approximate experimental value at LHC Pb+Pb energy, √s = 2.76 TeV.
+   Here are some measurements of the cross section at common beam energies (all have approximately 0.5 |fm2| uncertainty):
+
+   +---------+---------------+---------------+
+   |√s [TeV] | |snn| [|fm2|] | ref.          |
+   +=========+===============+===============+
+   |0.200    | 4.23          | `1509.06727`_ |
+   +---------+---------------+---------------+
+   |         | 6.4           | `1108.6027`_  |
+   + 2.76    +---------------+---------------+
+   |         | 6.28          | `1208.4968`_  |
+   +---------+---------------+---------------+
+   |5.02     | 7.0           | `1210.3615`_  |
+   +---------+---------------+---------------+
+   |7        | 7.32          | `1208.4968`_  |
+   +---------+---------------+---------------+
+
+.. |snn| replace:: σ\ :sub:`NN`
+.. |fm2| replace:: fm\ :sup:`2`
+.. _1108.6027: https://inspirehep.net/record/925723
+.. _1210.3615: https://inspirehep.net/record/1190545
+.. _1208.4968: https://inspirehep.net/record/1181770
+.. _1509.06727: https://inspirehep.net/record/1394433
 
 ``-n, --normalization FLOAT``
    Overall normalization factor.
