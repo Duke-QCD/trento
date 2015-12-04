@@ -2,9 +2,6 @@ T\ :sub:`R`\ ENTo
 =================
 *Reduced Thickness Event-by-event Nuclear Topology*
 
-.. image:: http://img.shields.io/travis/Duke-QCD/trento.svg?style=flat-square
-  :target: https://travis-ci.org/Duke-QCD/trento
-
 T\ :sub:`R`\ ENTo is a simple, fast model for the initial conditions of high-energy nuclear collisions (pp, pA, AA).
 `PRC 92 011901 <http://journals.aps.org/prc/abstract/10.1103/PhysRevC.92.011901>`_ / `arXiv:1412.4708 [nucl-th] <http://inspirehep.net/record/1334386>`_ formally presents the model and preliminary results.
 The code is `publicly available on github <https://github.com/Duke-QCD/trento>`_.
@@ -45,12 +42,12 @@ User guide
    usage
    examples
 
-Code internals
---------------
+Technical details
+-----------------
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   classes
+   internals
 
 Attribution
 -----------

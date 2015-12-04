@@ -48,7 +48,7 @@ constexpr T sqr(T value) {
 }
 
 // Determine the cross section parameter for sampling participants.
-// TODO: derive this
+// See section "Fitting the cross section" in the online docs.
 double compute_cross_sec_param(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
