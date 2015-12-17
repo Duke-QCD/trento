@@ -10,7 +10,9 @@
 #include <map>
 
 #include "catch.hpp"
+#include "util.h"
 
+#include "../src/hdf5_utils.h"
 #include "../src/random.h"
 
 using namespace trento;
@@ -132,6 +134,64 @@ TEST_CASE( "uranium nucleus" ) {
 
   CHECK( nucleus->radius() > 8. );
 }
+
+#ifdef TRENTO_HDF5
+
+TEST_CASE( "manual nucleus" ) {
+  std::vector<float> positions = {
+     0.,  0., 0.,
+     1.,  0., 0.,
+    -1.,  0., 0.,
+     3.,  0., 0.,
+     0.,  2., 0.,
+     0., -2., 0.,
+  };
+
+  const auto A = positions.size() / 3;
+
+  temporary_path temp{".hdf5"};
+
+  {
+    auto dataspace = hdf5::make_dataspace(std::array<hsize_t, 3>{1, A, 3});
+    const auto& datatype = hdf5::type<decltype(positions)::value_type>();
+
+    H5::H5File file{temp.path.string(), H5F_ACC_EXCL};
+
+    auto dataset = file.createDataSet("test", datatype, dataspace);
+    dataset.write(positions.data(), datatype);
+  }
+
+  auto nucleus = Nucleus::create(temp.path.string());
+
+  CHECK( dynamic_cast<ManualNucleus*>(nucleus.get()) != nullptr );
+
+  CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
+  CHECK( std::distance(nucleus->cbegin(), nucleus->cend()) == A );
+
+  CHECK( nucleus->radius() == Approx(3.) );
+
+  nucleus->sample_nucleons(0.);
+
+  auto nucleon = nucleus->cbegin();
+
+  CHECK( nucleon->x() == Approx(0.) );
+  CHECK( nucleon->y() == Approx(0.) );
+
+  std::advance(nucleon, 1);
+  CHECK( nucleon->x() == Approx(-std::next(nucleon)->x()) );
+  CHECK( nucleon->y() == Approx(-std::next(nucleon)->y()) );
+
+  CHECK( nucleon->x() == Approx(std::next(nucleon, 2)->x()/3) );
+  CHECK( nucleon->y() == Approx(std::next(nucleon, 2)->y()/3) );
+
+  std::advance(nucleon, 3);
+  CHECK( nucleon->x() == Approx(-std::next(nucleon)->x()) );
+  CHECK( nucleon->y() == Approx(-std::next(nucleon)->y()) );
+
+  CHECK_THROWS_AS( Nucleus::create("nonexistent.hdf"), std::invalid_argument );
+}
+
+#endif  // TRENTO_HDF5
 
 TEST_CASE( "woods-saxon sampling" ) {
   int A = 200;

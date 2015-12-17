@@ -11,7 +11,15 @@
 #include <utility>
 
 #include <boost/math/constants/constants.hpp>
+#ifdef TRENTO_HDF5
+// include multi_array for use with ManualNucleus
+#ifdef NDEBUG
+#define BOOST_DISABLE_ASSERTS
+#endif
+#include <boost/multi_array.hpp>
+#endif
 
+#include "hdf5_utils.h"
 #include "random.h"
 
 namespace trento {
@@ -73,6 +81,14 @@ NucleusPtr Nucleus::create(const std::string& species, double nucleon_width) {
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
       238, 6.67, correct_a(0.440, nucleon_width), 0.280, 0.093
     }};
+  // Read nuclear configurations from HDF5.
+  else if (hdf5::filename_is_hdf5(species)) {
+#ifdef TRENTO_HDF5
+    return ManualNucleus::create(species);
+#else
+    throw std::invalid_argument{"HDF5 output was not compiled"};
+#endif  // TRENTO_HDF5
+  }
   else
     throw std::invalid_argument{"unknown projectile species: " + species};
 }
@@ -274,5 +290,151 @@ void DeformedWoodsSaxonNucleus::sample_nucleons_impl() {
     set_nucleon_position(nucleon, x_rot, y_rot);
   }
 }
+
+#ifdef TRENTO_HDF5
+
+namespace {
+
+// Read a slice of an HDF5 dataset into a boost::multi_array.
+template <typename T, std::size_t FileDims, std::size_t MemDims>
+boost::multi_array<T, MemDims>
+read_dataset(
+    const H5::DataSet& dataset,
+    const std::array<hsize_t, FileDims>& count,
+    const std::array<hsize_t, FileDims>& start,
+    const std::array<hsize_t, MemDims>& shape) {
+  boost::multi_array<T, MemDims> array{shape};
+  auto filespace = dataset.getSpace();
+  filespace.selectHyperslab(H5S_SELECT_SET, count.data(), start.data());
+  auto memspace = hdf5::make_dataspace(shape);
+
+  dataset.read(array.data(), hdf5::type<T>(), memspace, filespace);
+
+  return array;
+}
+
+}  // unnamed namespace
+
+std::unique_ptr<ManualNucleus> ManualNucleus::create(const std::string& path) {
+  auto file = hdf5::try_open_file(path);
+
+  // Check that there is a single dataset in the file.
+  // Might relax this constraint in the future.
+  if (file.getNumObjs() != 1)
+    throw std::invalid_argument{
+      "file '" + path + "' must contain exactly one object"
+    };
+
+  auto name = file.getObjnameByIdx(0);
+  if (file.childObjType(name) != H5O_TYPE_DATASET)
+    throw std::invalid_argument{
+      "object '" + name + "' in file '" + path + "' is not a dataset"
+    };
+
+  // Make dataset object in a unique_ptr for eventual passing to ctor.
+  auto dataset = std::unique_ptr<H5::DataSet>{
+    new H5::DataSet{file.openDataSet(name)}
+  };
+
+  // Verify that the dataset has the correct dimensionality and shape.
+  std::array<hsize_t, 3> shape;
+  auto ndim = dataset->getSpace().getSimpleExtentDims(shape.data());
+
+  if (ndim != 3)
+    throw std::invalid_argument{
+      "dataset '" + name + "' in file '" + path + "' has " +
+      std::to_string(ndim) + " dimensions (need 3)"
+    };
+
+  if (shape[2] != 3)
+    throw std::invalid_argument{
+      "dataset '" + name + "' in file '" + path + "' has " +
+      std::to_string(shape[2]) + " columns (need 3)"
+    };
+
+  // Deduce number of configs and number of nucleons (A) from the shape.
+  const auto& nconfigs = shape[0];
+  const auto& A = shape[1];
+
+  // Estimate the max radius from at least 500 nucleon positions.
+  auto n = std::min(500/A + 1, nconfigs);
+  std::array<hsize_t, 3> count = {n, A, 3};
+  std::array<hsize_t, 3> start = {0, 0, 0};
+  std::array<hsize_t, 2> shape_n = {n*A, 3};
+  auto positions = read_dataset<float>(*dataset, count, start, shape_n);
+
+  auto rmax_sq = 0.;
+
+  for (const auto& position : positions) {
+    auto& x = position[0];
+    auto& y = position[1];
+    auto& z = position[2];
+    auto r_sq = x*x + y*y + z*z;
+    if (r_sq > rmax_sq)
+      rmax_sq = r_sq;
+  }
+
+  auto rmax = std::sqrt(rmax_sq);
+
+  return std::unique_ptr<ManualNucleus>{
+    new ManualNucleus{std::move(dataset), nconfigs, A, rmax}
+  };
+}
+
+ManualNucleus::ManualNucleus(std::unique_ptr<H5::DataSet> dataset,
+                             std::size_t nconfigs, std::size_t A, double rmax)
+    : Nucleus(A),
+      dataset_(std::move(dataset)),
+      A_(A),
+      rmax_(rmax),
+      index_dist_(0, nconfigs - 1)
+{}
+
+ManualNucleus::~ManualNucleus() = default;
+
+double ManualNucleus::radius() const {
+  return rmax_;
+}
+
+void ManualNucleus::sample_nucleons_impl() {
+  // Sample Euler rotation angles.
+  // First is an azimuthal spin about the Z axis.
+  const auto angle_1 = random::phi<double>();
+  const auto c1 = std::cos(angle_1);
+  const auto s1 = std::sin(angle_1);
+  // Then a polar tilt about the original X axis, uniform in cos(theta).
+  const auto c2 = random::cos_theta<double>();
+  const auto s2 = std::sqrt(1. - c2*c2);
+  // Finally another azimuthal spin about the original Z axis.
+  const auto angle_3 = random::phi<double>();
+  const auto c3 = std::cos(angle_3);
+  const auto s3 = std::sin(angle_3);
+
+  // Choose and read a random config from the dataset.
+  std::array<hsize_t, 3> count = {1, A_, 3};
+  std::array<hsize_t, 3> start = {index_dist_(random::engine), 0, 0};
+  std::array<hsize_t, 2> shape = {A_, 3};
+  const auto positions = read_dataset<float>(*dataset_, count, start, shape);
+
+  // Loop over the positions and internal nucleons together.
+  // Could use something fancy like boost::zip_iterator, but this is simpler and
+  // more readable.
+  auto positions_iter = positions.begin();
+  for (auto&& nucleon : *this) {
+    // Extract position vector and increment iterator.
+    auto position = *positions_iter++;
+    auto& x = position[0];
+    auto& y = position[1];
+    auto& z = position[2];
+
+    // Rotate.
+    auto x_rot = x*(c1*c3 - c2*s1*s3) - y*(c3*s1 + c1*c2*s3) + z*s2*s3;
+    auto y_rot = x*(c1*s3 + c2*c3*s1) - y*(s1*s3 - c1*c2*c3) - z*c3*s2;
+
+    set_nucleon_position(nucleon, x_rot, y_rot);
+  }
+}
+
+#endif  // TRENTO_HDF5
 
 }  // namespace trento

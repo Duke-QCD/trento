@@ -13,6 +13,13 @@
 #include "fwd_decl.h"
 #include "nucleon.h"
 
+#ifdef TRENTO_HDF5
+// forward declaration for std::unique_ptr<H5::DataSet> member of ManualNucleus
+namespace H5 {
+class DataSet;
+}
+#endif
+
 namespace trento {
 
 // Alias for a smart pointer to a Nucleus.
@@ -236,6 +243,57 @@ class DeformedWoodsSaxonNucleus : public Nucleus {
   /// Maximum radius.
   const double rmax_;
 };
+
+#ifdef TRENTO_HDF5
+
+/// Reads manual nuclear configurations from an HDF5 file.
+class ManualNucleus : public Nucleus {
+ public:
+  /// Create a ManualNucleus that reads from the given file.
+  /// Throw std::invalid_argument if there are any problems.
+  ///
+  /// Since this is a derived class, the base Nucleus class is initialized
+  /// before any the data members.  This creates a bit of a catch-22, since the
+  /// number of nucleons must be known to initialize the base class, but that
+  /// must be deduced from the file.  As a workaround, this factory function
+  /// opens the file, determines the number of nucleons, and then calls the
+  /// constructor.
+  static std::unique_ptr<ManualNucleus> create(const std::string& path);
+
+  /// Must define destructor because of member pointer to incomplete type.
+  /// See explanation for Collider destructor.
+  virtual ~ManualNucleus() override;
+
+  /// The radius is determined by reading many positions from the file and
+  /// saving the maximum.
+  virtual double radius() const override;
+
+ private:
+  /// Private constructor -- use create().
+  /// \param dataset smart pointer to HDF5 dataset
+  /// \param nconfigs number of nucleus configs in the dataset
+  /// \param A number of nucleons
+  /// \param rmax max radius
+  ManualNucleus(std::unique_ptr<H5::DataSet> dataset,
+                std::size_t nconfigs, std::size_t A, double rmax);
+
+  /// Read a configuration from the file, rotate it, and set nucleon positions.
+  virtual void sample_nucleons_impl() override;
+
+  /// Internal pointer to HDF5 dataset object (PIMPL-like).
+  const std::unique_ptr<H5::DataSet> dataset_;
+
+  /// Internal storage of number of nucleons.
+  const std::size_t A_;
+
+  /// Internal storage of the maximum radius.
+  const double rmax_;
+
+  /// Distribution for choosing random configs.
+  std::uniform_int_distribution<std::size_t> index_dist_;
+};
+
+#endif  // TRENTO_HDF5
 
 }  // namespace trento
 

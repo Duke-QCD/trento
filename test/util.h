@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <boost/filesystem.hpp>
 #include <boost/program_options/variables_map.hpp>
 
 #include "../src/fwd_decl.h"
@@ -31,6 +32,20 @@ struct capture_stdout {
 
   std::streambuf* cout_orig;
   std::stringstream stream;
+};
+
+// path that deletes itself when it goes out of scope
+struct temporary_path {
+  temporary_path(const fs::path& ext = fs::path{})
+      : path(
+          fs::temp_directory_path() /
+          fs::unique_path().replace_extension(ext)
+        )
+    {}
+  ~temporary_path() {
+    fs::remove_all(path);
+  }
+  const fs::path path;
 };
 
 #endif  // UTIL_H
