@@ -119,6 +119,7 @@ Nucleus types
 .. doxygenclass:: trento::Deuteron
 .. doxygenclass:: trento::WoodsSaxonNucleus
 .. doxygenclass:: trento::DeformedWoodsSaxonNucleus
+.. doxygenclass:: trento::ManualNucleus
 
 Nucleon
 ~~~~~~~

@@ -48,6 +48,9 @@ U3      6.67  0.44  0.280  0.093
 The ``U`` and ``U2`` sets are given in this recent `overview of particle production from PHENIX <http://inspirehep.net/record/1394433>`_.
 All other Woods-Saxon parameters (including ``U3``) and the Hulthén wavefunction parameters are from the `PHOBOS Glauber model <http://inspirehep.net/record/1310629>`_.
 
+In addition, ``trento`` can read arbitrary nuclear configurations saved in HDF5 files.
+See :ref:`manual-configs` below.
+
 General options
 ---------------
 These are general options that don't fit in any other category.
@@ -298,3 +301,49 @@ To be used like so::
    trento -c common.conf -c pp.conf
 
 If an option is specified in a config file and on the command line, the command line overrides.
+
+.. _manual-configs:
+
+Manual nuclear configurations
+-----------------------------
+``trento`` can read pre-generated nuclear configurations from HDF5 files.
+Instead of species abbreviations, specify paths on the command line::
+
+   trento path/to/file1.hdf path/to/file2.hdf
+
+The files may be the same or different and may be mixed with standard species abbreviations.
+For example, if file ``He3.hdf`` is in the current working directory, this would run |3He|\ +Au events::
+
+   trento He3.hdf Au
+
+For each event, ``trento`` will choose a random configuration from the file and apply a random three-dimensional rotation.
+Hence, it is safe to reuse each configuration several times.
+
+The following files were created from publicly available data and can be input directly to ``trento``.
+They are redistributed with permission from the authors.
+
+- |3He| configurations are from the `PHOBOS Glauber model <https://tglaubermc.hepforge.org>`_, created by Joe Carlson at LANL (`ref <http://journals.aps.org/rmp/abstract/10.1103/RevModPhys.70.743>`_).
+- |197Au| and |208Pb| configurations including realistic nucleon-nucleon correlations were created by Massimiliano Alvioli (`ref 1 <http://inspirehep.net/record/820666>`_, `ref 2 <http://inspirehep.net/record/1082705>`_) and are available on `his website <http://users.phys.psu.edu/~malvioli/eventgenerator>`_.
+
+If you use these configurations in your research, please cite the original authors.
+
+=======  ===============  ===========  =======  ============================================
+Species  File             No. configs  Size     sha1sum
+=======  ===============  ===========  =======  ============================================
+|3He|    He3.hdf_          13,699      484 KiB  ``a50c22ad8999db185e50fa513adf8100c29fba8c``
+|197Au|  Au197.hdf_         1,820      4.2 MiB  ``9124eeab163bb2fbc6a919cb96efd44b99cac6be``
+|208Pb|  Pb208_10k.hdf_    10,000       24 MiB  ``4d5c76cb4b5535538b57864a1287a4695abc29d1``
+|208Pb|  Pb208_100k.hdf_  100,000      239 MiB  ``d67f7aca2b14f8c705a4bfa0a8aeedcd3a816f6e``
+=======  ===============  ===========  =======  ============================================
+
+.. |3He| replace:: :sup:`3`\ He
+.. |197Au| replace:: :sup:`197`\ Au
+.. |208Pb| replace:: :sup:`208`\ Pb
+
+.. _He3.hdf: nuclear-configs/He3.hdf
+.. _Au197.hdf: nuclear-configs/Au197.hdf
+.. _Pb208_10k.hdf: nuclear-configs/Pb208_10k.hdf
+.. _Pb208_100k.hdf: nuclear-configs/Pb208_100k.hdf
+
+To run custom configurations, make an HDF5 file containing a single dataset of shape ``(number_configs, number_nucleons, 3)``, where the first dimension corresponds to each configuration, the second dimension to each nucleon, and the third dimension to the (x, y, z) coordinates of each nucleon.
+Note that the code will read the file as single-precision floats.

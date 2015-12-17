@@ -18,3 +18,5 @@ GENERATE_LATEX   = NO
 # shortcut to embed rst
 ALIASES          = "rst=\verbatim embed:rst:leading-asterisk" \
                    "endrst=\endverbatim"
+
+PREDEFINED       = TRENTO_HDF5
