@@ -9,7 +9,9 @@
 
 namespace boost {
 
-namespace filesystem {}
+namespace filesystem {
+class path;
+}
 
 namespace math {}
 
@@ -26,9 +28,8 @@ namespace math = boost::math;
 using VarMap = po::variables_map;
 
 namespace trento {
-
+class Event;
 class Nucleus;
-
-}  // namespace trento
+}
 
 #endif  // FWD_DECL_H

@@ -3,6 +3,7 @@
 add_library(${LIBRARY_NAME} STATIC
   collider.cxx
   event.cxx
+  hdf5_utils.cxx
   nucleon.cxx
   nucleus.cxx
   output.cxx

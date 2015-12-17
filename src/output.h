@@ -13,8 +13,6 @@
 
 namespace trento {
 
-class Event;
-
 /// Simple interface for outputting event data.  Determines which output formats
 /// to create based on the configuration and writes those formats when called.
 class Output {
