@@ -326,7 +326,11 @@ std::unique_ptr<ManualNucleus> ManualNucleus::create(const std::string& path) {
     };
 
   auto name = file.getObjnameByIdx(0);
+#if H5_VERSION_GE(1, 8, 13)
   if (file.childObjType(name) != H5O_TYPE_DATASET)
+#else
+  if (file.getObjTypeByIdx(0) != H5G_DATASET)
+#endif
     throw std::invalid_argument{
       "object '" + name + "' in file '" + path + "' is not a dataset"
     };
