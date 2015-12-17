@@ -104,16 +104,16 @@ TEST_CASE( "output" ) {
 
   SECTION( "text and stdout" ) {
     // configure for writing text files to a random temporary path
-    auto temp_path = fs::temp_directory_path() / fs::unique_path();
+    temporary_path temp{};
     auto output_var_map = make_var_map({
       {"quiet", false},
       {"number-events", 50},
-      {"output", temp_path}
+      {"output", temp.path}
     });
     Output output{output_var_map};
 
     // output directory should have been created
-    CHECK( fs::exists(temp_path) );
+    CHECK( fs::exists(temp.path) );
 
     {
       // output two events and verify two lines were printed to stdout
@@ -127,62 +127,60 @@ TEST_CASE( "output" ) {
     }
 
     // verify event files were created
-    CHECK( fs::exists(temp_path/"03.dat") );
-    CHECK( fs::exists(temp_path/"27.dat") );
+    CHECK( fs::exists(temp.path/"03.dat") );
+    CHECK( fs::exists(temp.path/"27.dat") );
 
-    // read event file back in
-    fs::ifstream ifs{temp_path/"03.dat"};
-    std::string line;
+    {
+      // read event file back in
+      fs::ifstream ifs{temp.path/"03.dat"};
+      std::string line;
 
-    // check header
-    std::getline(ifs, line);
-    CHECK( line == "# event 3" );
-
-    std::getline(ifs, line);
-    CHECK( line.substr(0, 10) == "# b     = " );
-    CHECK( std::stod(line.substr(10)) == Approx(b) );
-
-    std::getline(ifs, line);
-    CHECK( line.substr(0, 10) == "# npart = " );
-    CHECK( std::stoi(line.substr(10)) == event.npart() );
-
-    std::getline(ifs, line);
-    CHECK( line.substr(0, 10) == "# mult  = " );
-    CHECK( std::stod(line.substr(10)) == Approx(event.multiplicity()) );
-
-    for (const auto& ecc : event.eccentricity()) {
+      // check header
       std::getline(ifs, line);
-      CHECK( line.substr(0, 10) == ("# e" + std::to_string(ecc.first) + "    = ") );
-      CHECK( std::stod(line.substr(10)) == Approx(ecc.second) );
+      CHECK( line == "# event 3" );
+
+      std::getline(ifs, line);
+      CHECK( line.substr(0, 10) == "# b     = " );
+      CHECK( std::stod(line.substr(10)) == Approx(b) );
+
+      std::getline(ifs, line);
+      CHECK( line.substr(0, 10) == "# npart = " );
+      CHECK( std::stoi(line.substr(10)) == event.npart() );
+
+      std::getline(ifs, line);
+      CHECK( line.substr(0, 10) == "# mult  = " );
+      CHECK( std::stod(line.substr(10)) == Approx(event.multiplicity()) );
+
+      for (const auto& ecc : event.eccentricity()) {
+        std::getline(ifs, line);
+        CHECK( line.substr(0, 10) == ("# e" + std::to_string(ecc.first) + "    = ") );
+        CHECK( std::stod(line.substr(10)) == Approx(ecc.second) );
+      }
+
+      // read the grid back in and check each element
+      const auto* iter = event.reduced_thickness_grid().origin();
+      double check;
+      bool all_correct = false;
+      while (ifs >> check)
+        all_correct = (check == Approx(*(iter++))) || all_correct;
+      CHECK( all_correct );
+
+      // verify that all grid elements were checked
+      const auto* grid_end = event.reduced_thickness_grid().origin() +
+                             event.reduced_thickness_grid().num_elements();
+      CHECK( iter == grid_end );
     }
 
-    // read the grid back in and check each element
-    const auto* iter = event.reduced_thickness_grid().origin();
-    double check;
-    bool all_correct = false;
-    while (ifs >> check)
-      all_correct = (check == Approx(*(iter++))) || all_correct;
-    CHECK( all_correct );
-    ifs.close();
-
-    // verify that all grid elements were checked
-    const auto* grid_end = event.reduced_thickness_grid().origin() +
-                           event.reduced_thickness_grid().num_elements();
-    CHECK( iter == grid_end );
-
-    // check event number header in second file
-    ifs.open(temp_path/"27.dat");
-    std::getline(ifs, line);
-    CHECK( line == "# event 27" );
-    ifs.close();
+    {
+      // check event number header in second file
+      fs::ifstream ifs{temp.path/"27.dat"};
+      std::string line;
+      std::getline(ifs, line);
+      CHECK( line == "# event 27" );
+    }
 
     // attempting to output to the same directory again should throw an error
     CHECK_THROWS_AS( Output{output_var_map}, std::runtime_error );
-
-    // clear temporary files
-    fs::remove(temp_path/"03.dat");
-    fs::remove(temp_path/"27.dat");
-    fs::remove(temp_path);
   }
 
 #ifdef TRENTO_HDF5
@@ -190,70 +188,66 @@ TEST_CASE( "output" ) {
     auto nev = 10;
 
     // configure for writing a random hdf5 file
-    auto temp_path = fs::temp_directory_path() / fs::unique_path();
-    temp_path.replace_extension(".hdf5");
+    temporary_path temp{".hdf5"};
+
     auto output_var_map = make_var_map({
       {"quiet", true},
       {"number-events", nev},
-      {"output", temp_path}
+      {"output", temp.path}
     });
     Output output{output_var_map};
 
     for (auto n = 0; n < nev; ++n)
       output(n, b, event);
 
-    H5::H5File file{temp_path.string(), H5F_ACC_RDONLY};
-    CHECK( static_cast<int>(file.getNumObjs()) == nev );
+    {
+      H5::H5File file{temp.path.string(), H5F_ACC_RDONLY};
+      CHECK( static_cast<int>(file.getNumObjs()) == nev );
 
-    auto name = file.getObjnameByIdx(0);
-    CHECK( name == "event_0" );
+      auto name = file.getObjnameByIdx(0);
+      CHECK( name == "event_0" );
 
-    auto dataset = file.openDataSet(name);
+      auto dataset = file.openDataSet(name);
 
-    // read back in the event grid to another array
-    Event::Grid grid_check{event.reduced_thickness_grid()};
-    dataset.read(grid_check.data(), H5::PredType::NATIVE_DOUBLE);
+      // read back in the event grid to another array
+      Event::Grid grid_check{event.reduced_thickness_grid()};
+      dataset.read(grid_check.data(), H5::PredType::NATIVE_DOUBLE);
 
-    // verify each grid element
-    auto grid_correct = std::equal(
-      grid_check.origin(),
-      grid_check.origin() + grid_check.num_elements(),
-      event.reduced_thickness_grid().origin(),
-      [](const double& value_check, const double& value) {
-        return value_check == Approx(value);
+      // verify each grid element
+      auto grid_correct = std::equal(
+        grid_check.origin(),
+        grid_check.origin() + grid_check.num_elements(),
+        event.reduced_thickness_grid().origin(),
+        [](const double& value_check, const double& value) {
+          return value_check == Approx(value);
+        }
+      );
+      CHECK( grid_correct );
+
+      // verify attributes
+      double double_check;
+      int int_check;
+
+      dataset.openAttribute("b").read(H5::PredType::NATIVE_DOUBLE, &double_check);
+      CHECK( double_check == Approx(b) );
+
+      dataset.openAttribute("npart").read(H5::PredType::NATIVE_INT, &int_check);
+      CHECK( int_check == event.npart() );
+
+      dataset.openAttribute("mult").read(H5::PredType::NATIVE_DOUBLE, &double_check);
+      CHECK( double_check == Approx(event.multiplicity()) );
+
+      for (const auto& ecc : event.eccentricity()) {
+        dataset.openAttribute("e" + std::to_string(ecc.first))
+          .read(H5::PredType::NATIVE_DOUBLE, &double_check);
+        CHECK( double_check == Approx(ecc.second) );
       }
-    );
-    CHECK( grid_correct );
 
-    // verify attributes
-    double double_check;
-    int int_check;
-
-    dataset.openAttribute("b").read(H5::PredType::NATIVE_DOUBLE, &double_check);
-    CHECK( double_check == Approx(b) );
-
-    dataset.openAttribute("npart").read(H5::PredType::NATIVE_INT, &int_check);
-    CHECK( int_check == event.npart() );
-
-    dataset.openAttribute("mult").read(H5::PredType::NATIVE_DOUBLE, &double_check);
-    CHECK( double_check == Approx(event.multiplicity()) );
-
-    for (const auto& ecc : event.eccentricity()) {
-      dataset.openAttribute("e" + std::to_string(ecc.first))
-        .read(H5::PredType::NATIVE_DOUBLE, &double_check);
-      CHECK( double_check == Approx(ecc.second) );
+      CHECK( dataset.getNumAttrs() == 7 );
     }
-
-    CHECK( dataset.getNumAttrs() == 7 );
-
-    dataset.close();
-    file.close();
 
     // attempting to output to the same file again should throw an error
     CHECK_THROWS_AS( Output{output_var_map}, std::runtime_error );
-
-    // clear temporary file
-    fs::remove(temp_path);
   }
 #endif  // TRENTO_HDF5
 }
