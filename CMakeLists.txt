@@ -75,7 +75,8 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   set(CMAKE_REQUIRED_QUIET TRUE)
 
   # First try both AddressSanitizer and UndefinedBehaviorSanitizer.
-  set(CMAKE_REQUIRED_FLAGS "-fsanitize=address,undefined")
+  # Disable the vptr sanitizer because it throws errors with boost::any.
+  set(CMAKE_REQUIRED_FLAGS "-fsanitize=address,undefined -fno-sanitize=vptr")
   check_cxx_source_compiles("int main() { return 0; }" AddrUndefSanitizer)
 
   # Lacking that, try AddressSanitizer only.
