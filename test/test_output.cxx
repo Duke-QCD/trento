@@ -10,11 +10,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#ifdef TRENTO_HDF5
-#include <H5Cpp.h>
-#endif
-
 #include "../src/event.h"
+#include "../src/hdf5_utils.h"
 #include "../src/nucleus.h"
 
 using namespace trento;
@@ -243,7 +240,9 @@ TEST_CASE( "output" ) {
         CHECK( double_check == Approx(ecc.second) );
       }
 
+#if H5_VERSION_GE(1, 8, 14)  // causes memory leak on earlier versions
       CHECK( dataset.getNumAttrs() == 7 );
+#endif
     }
 
     // attempting to output to the same file again should throw an error
