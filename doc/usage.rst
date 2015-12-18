@@ -48,8 +48,7 @@ U3      6.67  0.44  0.280  0.093
 The ``U`` and ``U2`` sets are given in this recent `overview of particle production from PHENIX <http://inspirehep.net/record/1394433>`_.
 All other Woods-Saxon parameters (including ``U3``) and the Hulthén wavefunction parameters are from the `PHOBOS Glauber model <http://inspirehep.net/record/1310629>`_.
 
-In addition, ``trento`` can read arbitrary nuclear configurations saved in HDF5 files.
-See :ref:`manual-configs` below.
+In addition, ``trento`` can read :ref:`arb-configs` saved in HDF5 files.
 
 General options
 ---------------
@@ -302,22 +301,11 @@ To be used like so::
 
 If an option is specified in a config file and on the command line, the command line overrides.
 
-.. _manual-configs:
+.. _arb-configs:
 
-Manual nuclear configurations
------------------------------
+Arbitrary nuclear configurations
+--------------------------------
 ``trento`` can read pre-generated nuclear configurations from HDF5 files.
-Instead of species abbreviations, specify paths on the command line::
-
-   trento path/to/file1.hdf path/to/file2.hdf
-
-The files may be the same or different and may be mixed with standard species abbreviations.
-For example, if file ``He3.hdf`` is in the current working directory, this would run |3He|\ +Au events::
-
-   trento He3.hdf Au
-
-For each event, ``trento`` will choose a random configuration from the file and apply a random three-dimensional rotation.
-Hence, it is safe to reuse each configuration several times.
 
 The following files were created from publicly available data and can be input directly to ``trento``.
 They are redistributed with permission from the authors.
@@ -345,5 +333,38 @@ Species  File             No. configs  Size     sha1sum
 .. _Pb208_10k.hdf: nuclear-configs/Pb208_10k.hdf
 .. _Pb208_100k.hdf: nuclear-configs/Pb208_100k.hdf
 
+Pb208_10k.hdf_ contains the same data as the first 10,000 configurations in Pb208_100k.hdf_.
+The smaller file is provided for convenience.
+
+To use pre-generated configurations, specify a path to an appropriate file on the command line in place of a species abbreviation::
+
+   trento path/to/file1.hdf path/to/file2.hdf
+
+Filenames must have an HDF5-like extension (``.hdf5``, ``.hdf``, ``.hd5``, ``.h5``).
+The files may be the same or different and may be mixed with standard species abbreviations.
+For each event, ``trento`` will choose a random configuration from the file and apply a random three-dimensional rotation.
+Hence, it is safe to run several events per pre-generated configuration.
+
+For example, to run |3He|\ +Au events at RHIC, download He3.hdf_ and execute ::
+
+   trento --cross-section 4.2 He3.hdf Au2
+
+Remember to set the appropriate cross section for the desired beam energy!
+
 To run custom configurations, make an HDF5 file containing a single dataset of shape ``(number_configs, number_nucleons, 3)``, where the first dimension corresponds to each configuration, the second dimension to each nucleon, and the third dimension to the (x, y, z) coordinates of each nucleon.
-Note that the code will read the file as single-precision floats.
+Note that ``trento`` will read the file as single-precision floats, not doubles.
+
+The easiest way to write an HDF5 file is with `h5py <http://www.h5py.org>`_:
+
+.. code-block:: python
+
+   import numpy as np
+   import h5py
+
+   # generate random data for 10 configs of a nucleus with 100 nucleons
+   configs = np.random.uniform(-1, 1, (10, 100, 3))
+
+   with h5py.File('nuclear_configs.hdf') as f:
+      # the name of the dataset does not matter as long as there is only one
+      f.create_dataset('configs', data=configs, dtype=np.float32)
+
