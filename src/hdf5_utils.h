@@ -9,6 +9,13 @@
 
 #ifdef TRENTO_HDF5
 #include <H5Cpp.h>
+// This macro was introduced in v1.8.7.  Define it manually for older versions.
+#ifndef H5_VERSION_GE
+#define H5_VERSION_GE(Maj,Min,Rel) \
+       (((H5_VERS_MAJOR==Maj) && (H5_VERS_MINOR==Min) && (H5_VERS_RELEASE>=Rel)) || \
+        ((H5_VERS_MAJOR==Maj) && (H5_VERS_MINOR>Min)) || \
+        (H5_VERS_MAJOR>Maj))
+#endif
 #endif
 
 #include "fwd_decl.h"
