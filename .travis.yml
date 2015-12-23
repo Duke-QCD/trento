@@ -1,33 +1,37 @@
 sudo: false
 language: cpp
-compiler: gcc
+compiler:
+  - gcc
+  - clang
 
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.5
       - boost-latest
     packages:
       - g++-5
+      - clang-3.5
       - libboost1.55-dev
       - libboost-filesystem1.55-dev
       - libboost-program-options1.55-dev
       - libhdf5-serial-dev
 
+env:
+  - BUILD_TYPE='Release'
+  - BUILD_TYPE='Debug'
+
 install:
-  - export CXX="g++-5"
+  - if [ "$CXX" = 'g++' ]; then export CXX='g++-5'; else export CXX='clang++-3.5'; fi
 
 script:
-  - mkdir -p build/{debug,release}
-  - cd build/debug
-  - cmake ../.. -DCMAKE_BUILD_TYPE=Debug
+  - mkdir build
+  - cd build
+  - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
   - make trento test-trento
   - ./test/test-trento --success
-  - ./src/trento p Pb 10
-  - ./src/trento Cu2 Au2 10
-  - cd ../release
-  - cmake ../.. -DCMAKE_BUILD_TYPE=Release
-  - make trento test-trento
-  - ./test/test-trento --success
-  - ./src/trento p Pb 10
-  - ./src/trento U U 10
+  - ./src/trento Pb Pb 10
+  - ./src/trento -x 7.0 p Pb 10
+  - ./src/trento -x 4.2 U U 10
+  - ./src/trento -x 4.2 d Au2 10

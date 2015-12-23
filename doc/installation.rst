@@ -32,7 +32,6 @@ This will install the compiled binary to ``~/.local/bin/trento``.
 If you do not want this to happen, run ``make`` instead of ``make install`` and the binary will be left at ``build/src/trento``.
 The remainder of this document assumes ``trento`` is in your ``PATH``.
 
-The code is `continuously tested <https://travis-ci.org/Duke-QCD/trento>`_ on Ubuntu with GCC 5.x.
+The code is `continuously tested <https://travis-ci.org/Duke-QCD/trento>`_ on Ubuntu with GCC and Clang.
 It should run just as well on any Linux distribution or OS X, and probably on Windows.
-For the compiler, Clang works as well as GCC.
 Other compilers should work but may require modifying the compiler flags.
