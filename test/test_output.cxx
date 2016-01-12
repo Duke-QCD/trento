@@ -247,6 +247,23 @@ TEST_CASE( "output" ) {
 
     // attempting to output to the same file again should throw an error
     CHECK_THROWS_AS( Output{output_var_map}, std::runtime_error );
+
+    // create another empty temporary file
+    temporary_path temp2{".hdf5"};
+    {
+      fs::ofstream{temp2.path};
+    }
+
+    // should be able to write to an existing but empty file
+    Output{
+      make_var_map({
+        {"quiet", true},
+        {"number-events", 1},
+        {"output", temp2.path}
+      })
+    }(0, b, event);
+
+    CHECK( fs::file_size(temp2.path) > 0);
   }
 #endif  // TRENTO_HDF5
 }

@@ -169,7 +169,7 @@ Output::Output(const VarMap& var_map) {
     const auto& output_path = var_map["output"].as<fs::path>();
     if (hdf5::filename_is_hdf5(output_path)) {
 #ifdef TRENTO_HDF5
-      if (fs::exists(output_path))
+      if (fs::exists(output_path) && !fs::is_empty(output_path))
         throw std::runtime_error{"file '" + output_path.string() +
                                  "' exists, will not overwrite"};
       writers_.emplace_back(HDF5Writer{output_path});
