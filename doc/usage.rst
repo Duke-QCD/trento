@@ -83,12 +83,12 @@ with one line for each event, where
 - the ``en`` are the eccentricity harmonics ɛ\ :sub:`n`.
 
 This format is designed for easy parsing, redirection to files, etc.
+The output may be disabled with the ``-q/--quiet`` option.
 
 By default, the actual initial entropy profiles (grids) are not output.
 There are two available output formats: text and HDF5 (if compiled).
 
-In text mode, each event is written to a separate text file.
-Each file has a commented header containing the event properties, like this::
+In text mode, each event is written to a separate text file as a standard block-style grid, along with a commented header containing the event properties, like this::
 
    # event 0
    # b     = 2.964077155
@@ -99,7 +99,7 @@ Each file has a commented header containing the event properties, like this::
    # e4    = 0.1101683349
    # e5    = 0.1727159106
 
-The profile follows the header as a standard block-style grid.
+The header may be disabled with the ``--no-header`` option.
 
 HDF5 is a high-performance, cross-platform binary format for large numerical datasets.
 Libraries are available in `most languages <https://en.wikipedia.org/wiki/Hierarchical_Data_Format#Interfaces>`_.
@@ -130,6 +130,9 @@ Event properties are written to each dataset as HDF5 attributes with names ``b``
 
    - ``--output events`` will write to text files ``events/0.dat``, ``events/1.dat``, ...
    - ``--output events.hdf`` will write to HDF5 file ``events.hdf`` with dataset names ``event_0``, ``event_1``, ...
+
+``--no-header``
+   Disable writing event headers to text files.
 
 Physical options
 ----------------
@@ -294,6 +297,8 @@ For example, one could have a file ``common.conf`` containing settings for all c
    number-events = 100000
    grid-max = 3
 
+.. highlight:: none
+
 To be used like so::
 
    trento -c common.conf -c PbPb.conf
@@ -354,9 +359,9 @@ Remember to set the appropriate cross section for the desired beam energy!
 To run custom configurations, make an HDF5 file containing a single dataset of shape ``(number_configs, number_nucleons, 3)``, where the first dimension corresponds to each configuration, the second dimension to each nucleon, and the third dimension to the (x, y, z) coordinates of each nucleon.
 Note that ``trento`` will read the file as single-precision floats, not doubles.
 
-The easiest way to write an HDF5 file is with `h5py <http://www.h5py.org>`_:
+.. highlight:: python
 
-.. code-block:: python
+The easiest way to write an HDF5 file is with `h5py <http://www.h5py.org>`_::
 
    import numpy as np
    import h5py

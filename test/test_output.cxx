@@ -104,6 +104,7 @@ TEST_CASE( "output" ) {
     temporary_path temp{};
     auto output_var_map = make_var_map({
       {"quiet", false},
+      {"no-header", false},
       {"number-events", 50},
       {"output", temp.path}
     });

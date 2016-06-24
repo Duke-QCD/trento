@@ -98,7 +98,9 @@ int main(int argc, char* argv[]) {
     ("quiet,q", po::bool_switch(),
      "do not print event properties to stdout")
     ("output,o", po::value<fs::path>()->value_name("PATH"),
-     "HDF5 file or directory for text files");
+     "HDF5 file or directory for text files")
+    ("no-header", po::bool_switch(),
+     "do not write headers to text files");
 
   OptDesc phys_opts{"physical options"};
   phys_opts.add_options()

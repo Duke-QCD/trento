@@ -44,22 +44,24 @@ void write_stream(std::ostream& os, int width,
 }
 
 void write_text_file(const fs::path& output_dir, int width,
-    int num, double impact_param, const Event& event) {
+    int num, double impact_param, const Event& event, bool header) {
   // Open a numbered file in the output directory.
   // Pad the filename with zeros.
   std::ostringstream padded_fname{};
   padded_fname << std::setw(width) << std::setfill('0') << num << ".dat";
   fs::ofstream ofs{output_dir / padded_fname.str()};
 
-  // Write a commented header of event properties as key = value pairs.
-  ofs << std::setprecision(10)
-      << "# event "   << num                  << '\n'
-      << "# b     = " << impact_param         << '\n'
-      << "# npart = " << event.npart()        << '\n'
-      << "# mult  = " << event.multiplicity() << '\n';
+  if (header) {
+    // Write a commented header of event properties as key = value pairs.
+    ofs << std::setprecision(10)
+        << "# event "   << num                  << '\n'
+        << "# b     = " << impact_param         << '\n'
+        << "# npart = " << event.npart()        << '\n'
+        << "# mult  = " << event.multiplicity() << '\n';
 
-  for (const auto& ecc : event.eccentricity())
-    ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
+    for (const auto& ecc : event.eccentricity())
+      ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
+  }
 
   // Write IC profile as a block grid.  Use C++ default float format (not
   // fixed-width) so that trailing zeros are omitted.  This significantly
@@ -189,9 +191,11 @@ Output::Output(const VarMap& var_map) {
       } else {
         fs::create_directories(output_path);
       }
+      auto header = !var_map["no-header"].as<bool>();
       writers_.emplace_back(
-        [output_path, width](int num, double impact_param, const Event& event) {
-          write_text_file(output_path, width, num, impact_param, event);
+        [output_path, width, header](
+            int num, double impact_param, const Event& event) {
+          write_text_file(output_path, width, num, impact_param, event, header);
         }
       );
     }
