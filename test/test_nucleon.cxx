@@ -68,6 +68,7 @@ TEST_CASE( "nucleon" ) {
   auto& nB = *B.begin();
   CHECK( nA.x() == 0. );
   CHECK( nA.y() == 0. );
+  CHECK( nA.z() == 0. );
   CHECK( !nA.is_participant() );
 
   // wait until the nucleons participate

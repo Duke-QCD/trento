@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <iterator>
 #include <map>
 
@@ -37,6 +38,7 @@ TEST_CASE( "proton" ) {
   // check correct position
   CHECK( proton.x() == offset );
   CHECK( proton.y() == 0. );
+  CHECK( proton.z() == 0. );
 
   // not a participant initially
   CHECK( !proton.is_participant() );
@@ -54,6 +56,7 @@ TEST_CASE( "deuteron" ) {
 
   CHECK( nucleus->cbegin()->x() == -std::next(nucleus->cbegin())->x() );
   CHECK( nucleus->cbegin()->y() == -std::next(nucleus->cbegin())->y() );
+  CHECK( nucleus->cbegin()->z() == -std::next(nucleus->cbegin())->z() );
 
   CHECK( nucleus->radius() == Approx(-std::log(.01)/(2*0.457)) );
 }
@@ -73,16 +76,19 @@ TEST_CASE( "lead nucleus" ) {
   nucleus->sample_nucleons(offset);
 
   // average nucleon position
-  double x = 0., y = 0.;
+  double x = 0., y = 0., z = 0.;
   for (const auto& nucleon : *nucleus) {
     x += nucleon.x();
     y += nucleon.y();
+    z += nucleon.z();
   }
   x /= A;
   y /= A;
+  z /= A;
   auto tolerance = .6;
   CHECK( std::abs(x - offset) < tolerance );
   CHECK( std::abs(y) < tolerance );
+  CHECK( std::abs(z) < tolerance );
 
   // no initial participants
   bool initial_participants = std::any_of(
@@ -176,17 +182,21 @@ TEST_CASE( "manual nucleus" ) {
 
   CHECK( nucleon->x() == Approx(0.) );
   CHECK( nucleon->y() == Approx(0.) );
+  CHECK( nucleon->z() == Approx(0.) );
 
   std::advance(nucleon, 1);
   CHECK( nucleon->x() == Approx(-std::next(nucleon)->x()) );
   CHECK( nucleon->y() == Approx(-std::next(nucleon)->y()) );
+  CHECK( nucleon->z() == Approx(-std::next(nucleon)->z()) );
 
   CHECK( nucleon->x() == Approx(std::next(nucleon, 2)->x()/3) );
   CHECK( nucleon->y() == Approx(std::next(nucleon, 2)->y()/3) );
+  CHECK( nucleon->z() == Approx(std::next(nucleon, 2)->z()/3) );
 
   std::advance(nucleon, 3);
   CHECK( nucleon->x() == Approx(-std::next(nucleon)->x()) );
   CHECK( nucleon->y() == Approx(-std::next(nucleon)->y()) );
+  CHECK( nucleon->z() == Approx(-std::next(nucleon)->z()) );
 
   CHECK_THROWS_AS( Nucleus::create("nonexistent.hdf"), std::invalid_argument );
 }
@@ -207,8 +217,6 @@ TEST_CASE( "woods-saxon sampling" ) {
   // does this.
 
   // sample a bunch of nuclei and bin all the nucleon positions
-  // using "p" for cylindrical radius to distinguish from spherical "r"
-  auto dp = .5;
   auto nevents = 1000;
   auto nsamples = nevents * A;
   std::map<int, int> hist{};
@@ -217,47 +225,47 @@ TEST_CASE( "woods-saxon sampling" ) {
     for (const auto& nucleon : *nucleus) {
       auto x = nucleon.x();
       auto y = nucleon.y();
-      auto p = std::sqrt(x*x + y*y);
-      ++hist[p/dp];
+      auto z = nucleon.y();
+      auto r = std::sqrt(x*x + y*y + z*z);
+      ++hist[static_cast<int>(r)];
     }
   }
 
-  // integrate the W-S dist from pmin to pmax and over all z
-  double rmax = R + 10.*a;
-  auto integrate_woods_saxon = [R, a, rmax](double pmin, double pmax) -> double {
-    int nzbins = 1000;
-    auto npbins = static_cast<int>(nzbins*(pmax-pmin)/rmax);
+  // integrate the W-S dist from rmin to rmax
+  auto integrate_woods_saxon = [R, a](double rmin, double rmax) -> double {
+    auto nbins = static_cast<int>((rmax - rmin)/.001);
+    auto dr = (rmax - rmin)/nbins;
     double result = 0.;
-    for (auto ip = 0; ip <= npbins; ++ip) {
-      auto p = pmin + (ip*(pmax-pmin))/(npbins - 1);
-      for (auto iz = 0; iz < nzbins; ++iz) {
-        auto z = (iz*rmax)/(nzbins-1);
-        result += p/(1.+std::exp((std::sqrt(p*p + z*z) - R)/a));
-      }
+    for (auto n = 0; n <= nbins; ++n) {
+      auto r = rmin + n*dr;
+      auto f = r*r/(1. + std::exp((r - R)/a));
+      if (n == 0 || n == nbins)
+        f /= 2;
+      result += f;
     }
-    return result;
+    return result * dr;
   };
 
-  double ws_norm = integrate_woods_saxon(0, rmax);
+  double ws_norm = integrate_woods_saxon(0, hist.size());
 
   // check all histogram bins agree with numerical integration
   auto all_bins_correct = true;
   std::ostringstream bin_output{};
   bin_output << std::fixed << std::boolalpha
-             << "pmin     pmax     prob     cprob    ratio    pass\n";
+             << "rmin rmax  prob      cprob     ratio     pass\n";
   for (const auto& bin : hist) {
-    auto pmin = bin.first * dp;
-    auto pmax = pmin + dp;
+    auto rmin = bin.first;
+    auto rmax = rmin + 1;
     auto prob = static_cast<double>(bin.second) / nsamples;
-    auto correct_prob = integrate_woods_saxon(pmin, pmax) / ws_norm;
+    auto correct_prob = integrate_woods_saxon(rmin, rmax) / ws_norm;
     bool within_tol = prob == Approx(correct_prob).epsilon(.1);
     if (!within_tol)
       all_bins_correct = false;
-    bin_output << pmin << ' '
-               << pmax << ' '
-               << prob << ' '
-               << correct_prob << ' '
-               << prob/correct_prob << ' '
+    bin_output << std::setw(4) << rmin << ' '
+               << std::setw(4) << rmax << "  "
+               << prob << "  "
+               << correct_prob << "  "
+               << prob/correct_prob << "  "
                << within_tol << '\n';
   }
   INFO( bin_output.str() );
