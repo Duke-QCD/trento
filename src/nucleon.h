@@ -71,9 +71,9 @@ class NucleonProfile {
 };
 
 /// \rst
-/// Represents a single nucleon.  Stores its transverse position and whether or
-/// not it's a participant.  These properties are globally readable, but can
-/// only be set through ``Nucleus`` and ``NucleonProfile``.
+/// Represents a single nucleon.  Stores its position and whether or not it's a
+/// participant.  These properties are globally readable, but can only be set
+/// through ``Nucleus`` and ``NucleonProfile``.
 /// \endrst
 class Nucleon {
  public:
@@ -87,6 +87,9 @@ class Nucleon {
   /// The transverse \em y position.
   double y() const;
 
+  /// The longitudinal \em z position.
+  double z() const;
+
   /// Whether or not this nucleon is a participant.
   bool is_participant() const;
 
@@ -98,14 +101,14 @@ class Nucleon {
   /// participation status.
   friend bool NucleonProfile::participate(Nucleon&, Nucleon&) const;
 
-  /// Set the transverse position and reset participant status to false.
-  void set_position(double x, double y);
+  /// Set the position and reset participant status to false.
+  void set_position(double x, double y, double z);
 
   /// Mark as a participant.
   void set_participant();
 
-  /// Internal storage of the transverse position.
-  double x_, y_;
+  /// Internal storage of the position.
+  double x_, y_, z_;
 
   /// Internal storage of participant status.
   bool participant_;
@@ -124,13 +127,18 @@ inline double Nucleon::y() const {
   return y_;
 }
 
+inline double Nucleon::z() const {
+  return z_;
+}
+
 inline bool Nucleon::is_participant() const {
   return participant_;
 }
 
-inline void Nucleon::set_position(double x, double y) {
+inline void Nucleon::set_position(double x, double y, double z) {
   x_ = x;
   y_ = y;
+  z_ = z;
   participant_ = false;
 }
 

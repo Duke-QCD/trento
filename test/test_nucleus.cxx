@@ -317,6 +317,27 @@ TEST_CASE( "nuclear radius" ) {
   CHECK( def_nucleus.radius() > radius );
 }
 
+TEST_CASE( "minimum distance" ) {
+  for (const auto& species : {"Pb", "U"}) {
+    for (auto repeat = 0; repeat < 10; ++repeat) {
+      auto nucleus = Nucleus::create("Pb");
+      nucleus->sample_nucleons(10*random::canonical<>());
+      auto dminsq = 100.;
+      for (auto n1 = nucleus->cbegin(); n1 != nucleus->cend(); ++n1) {
+        for (auto n2 = n1 + 1; n2 != nucleus->cend(); ++n2) {
+          auto dx = n1->x() - n2->x();
+          auto dy = n1->y() - n2->y();
+          auto dz = n1->z() - n2->z();
+          dminsq = std::fmin(dx*dx + dy*dy + dz*dz, dminsq);
+        }
+      }
+      auto dmin = std::sqrt(dminsq);
+      INFO( "species " << species << " repeat " << repeat );
+      CHECK( dmin > .4 );
+    }
+  }
+}
+
 TEST_CASE( "unknown nucleus species" ) {
   CHECK_THROWS_AS( Nucleus::create("hello"), std::invalid_argument );
 }

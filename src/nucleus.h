@@ -26,10 +26,10 @@ namespace trento {
 using NucleusPtr = std::unique_ptr<Nucleus>;
 
 /// \rst
-/// Interface class to all nucleus types.  Stores an ensemble of nucleons
-/// and randomly samples their transverse positions.  Implements a standard
-/// iterator interface through ``begin()`` and ``end()`` functions.  Iterating over
-/// a ``Nucleus`` means iterating over its ``Nucleon`` members.
+/// Interface class to all nucleus types.  Stores an ensemble of nucleons and
+/// randomly samples their positions.  Implements a standard iterator interface
+/// through ``begin()`` and ``end()`` functions.  Iterating over a ``Nucleus``
+/// means iterating over its ``Nucleon`` members.
 /// \endrst
 class Nucleus {
  public:
@@ -104,7 +104,14 @@ class Nucleus {
   /// ``Nucleus`` is a friend of ``Nucleon`` and therefore able to set nucleon
   /// positions; the derived classes must use this function to set positions.
   /// \endrst
-  void set_nucleon_position(Nucleon& nucleon, double x, double y);
+  void set_nucleon_position(iterator nucleon, double x, double y, double z);
+
+  /// \rst
+  /// Check if a ``Nucleon`` is too close (within 0.4 fm) of any previously
+  /// placed nucleons.  Specifically, check nucleons from ``begin()`` up to the
+  /// given iterator.
+  /// \endrst
+  bool is_too_close(const_iterator nucleon) const;
 
  private:
   /// Internal interface to the actual implementation of the nucleon sampling
