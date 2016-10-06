@@ -124,7 +124,7 @@ Nucleus types
 Nucleon
 ~~~~~~~
 .. doxygenclass:: trento::Nucleon
-   :members: Nucleon, x, y, is_participant, set_position, set_participant
+   :members: Nucleon, x, y, z, is_participant, set_position, set_participant
 
 Nucleon profile
 ~~~~~~~~~~~~~~~

@@ -48,6 +48,14 @@ U3      6.67  0.44  0.280  0.093
 The ``U`` and ``U2`` sets are given in this recent `overview of particle production from PHENIX <http://inspirehep.net/record/1394433>`_.
 All other Woods-Saxon parameters (including ``U3``) and the Hulthén wavefunction parameters are from the `PHOBOS Glauber model <http://inspirehep.net/record/1310629>`_.
 
+.. note::
+
+   For Woods-Saxon nuclei (spherical and deformed), ``trento`` imposes a minimum nucleon-nucleon distance of 0.4 fm.
+   If a sampled nucleon lands too close to a previously sampled nucleon, its angular position is resampled until it lands far enough away.
+   The radius is *not* resampled, since this would effectively modify the Woods-Saxon distribution.
+
+   .. versionadded:: 1.4
+
 In addition, ``trento`` can read :ref:`arb-configs` saved in HDF5 files.
 
 General options
@@ -310,6 +318,8 @@ If an option is specified in a config file and on the command line, the command 
 
 Arbitrary nuclear configurations
 --------------------------------
+.. versionadded:: 1.3
+
 ``trento`` can read pre-generated nuclear configurations from HDF5 files.
 
 The following files were created from publicly available data and can be input directly to ``trento``.
