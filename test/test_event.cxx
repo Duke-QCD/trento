@@ -49,8 +49,8 @@ TEST_CASE( "event" ) {
     CHECK( static_cast<int>(event.reduced_thickness_grid().shape()[0]) == grid_nsteps );
     CHECK( static_cast<int>(event.reduced_thickness_grid().shape()[1]) == grid_nsteps );
 
-    auto nucleusA = Nucleus::create("Pb", nucleon_width);
-    auto nucleusB = Nucleus::create("Pb", nucleon_width);
+    auto nucleusA = Nucleus::create("Pb");
+    auto nucleusB = Nucleus::create("Pb");
 
     // Sample impact param, nucleons, and participants.
     auto b = 4.*std::sqrt(random::canonical<>());

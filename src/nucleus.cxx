@@ -24,25 +24,7 @@
 
 namespace trento {
 
-namespace {
-
-// Correct Woods-Saxon surface thickness parameter (a) for finite Gaussian
-// nucleon width (w):
-//
-//    a_corrected^2 = a^2 - c^2*w*2
-//
-// where c is a universal constant independent of a and w.
-//
-// See https://gist.github.com/jbernhard/60b3ab9662a4737658d8.
-double correct_a(double a, double w) {
-  constexpr auto c = 0.61;  // correction coefficient
-  constexpr auto a_min = 0.01;  // min. value (prevent div. by zero, etc.)
-  return std::sqrt(std::fmax(a*a - c*c*w*w, a_min*a_min));
-}
-
-}  // unnamed namespace
-
-NucleusPtr Nucleus::create(const std::string& species, double nucleon_width) {
+NucleusPtr Nucleus::create(const std::string& species) {
   // W-S params ref. in header
   // XXX: remember to add new species to the help output in main() and the readme
   if (species == "p")
@@ -51,35 +33,35 @@ NucleusPtr Nucleus::create(const std::string& species, double nucleon_width) {
     return NucleusPtr{new Deuteron{}};
   else if (species == "Cu")
     return NucleusPtr{new WoodsSaxonNucleus{
-       62, 4.20, correct_a(0.596, nucleon_width)
+       62, 4.20, 0.596
     }};
   else if (species == "Cu2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-       62, 4.20, correct_a(0.596, nucleon_width), 0.162, -0.006
+       62, 4.20, 0.596, 0.162, -0.006
     }};
   else if (species == "Au")
     return NucleusPtr{new WoodsSaxonNucleus{
-      197, 6.38, correct_a(0.535, nucleon_width)
+      197, 6.38, 0.535
     }};
   else if (species == "Au2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      197, 6.38, correct_a(0.535, nucleon_width), -0.131, -0.031
+      197, 6.38, 0.535, -0.131, -0.031
     }};
   else if (species == "Pb")
     return NucleusPtr{new WoodsSaxonNucleus{
-      208, 6.62, correct_a(0.546, nucleon_width)
+      208, 6.62, 0.546
     }};
   else if (species == "U")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      238, 6.81, correct_a(0.600, nucleon_width), 0.280, 0.093
+      238, 6.81, 0.600, 0.280, 0.093
     }};
   else if (species == "U2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      238, 6.86, correct_a(0.420, nucleon_width), 0.265, 0.000
+      238, 6.86, 0.420, 0.265, 0.000
     }};
   else if (species == "U3")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      238, 6.67, correct_a(0.440, nucleon_width), 0.280, 0.093
+      238, 6.67, 0.440, 0.280, 0.093
     }};
   // Read nuclear configurations from HDF5.
   else if (hdf5::filename_is_hdf5(species)) {

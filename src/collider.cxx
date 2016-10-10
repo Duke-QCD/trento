@@ -23,8 +23,7 @@ namespace {
 NucleusPtr create_nucleus(const VarMap& var_map, std::size_t index) {
   const auto& species = var_map["projectile"]
                         .as<std::vector<std::string>>().at(index);
-  const auto& nucleon_width = var_map["nucleon-width"] .as<double>();
-  return Nucleus::create(species, nucleon_width);
+  return Nucleus::create(species);
 }
 
 // Determine the maximum impact parameter.  If the configuration contains a

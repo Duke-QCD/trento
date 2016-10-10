@@ -41,8 +41,6 @@ class Nucleus {
   /// - http://inspirehep.net/record/786828
   /// - http://inspirehep.net/record/1310629
   ///
-  /// Additionally corrects the parameters for finite nucleon size.
-  ///
   /// Example::
   ///
   ///   std::unique_ptr<Nucleus> lead_nucleus = Nucleus::create("Pb");
@@ -54,12 +52,11 @@ class Nucleus {
   /// \endrst
   ///
   /// \param species standard symbol, e.g. "p" for proton or "Pb" for lead-208
-  /// \param nucleon_width Gaussian nucleon width (optional, default zero)
   ///
   /// \return a smart pointer \c std::unique_ptr<Nucleus>
   ///
   /// \throw std::invalid_argument for unknown species
-  static NucleusPtr create(const std::string& species, double nucleon_width = 0);
+  static NucleusPtr create(const std::string& species);
 
   /// Default virtual destructor for abstract base class.
   virtual ~Nucleus() = default;

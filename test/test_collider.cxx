@@ -61,7 +61,7 @@ TEST_CASE( "collider" ) {
   CHECK( nevent == sequence );
 
   // verify impact parameters are within min-bias range
-  auto impact_max = 2*Nucleus::create("Pb", .5)->radius() + 6*.5;
+  auto impact_max = 2*Nucleus::create("Pb")->radius() + 6*.5;
   CHECK( impact >= std::vector<double>(N, 0.) );
   CHECK( impact <= std::vector<double>(N, impact_max) );
 
