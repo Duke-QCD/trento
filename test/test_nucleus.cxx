@@ -328,7 +328,8 @@ TEST_CASE( "nuclear radius" ) {
 TEST_CASE( "minimum distance" ) {
   for (const auto& species : {"Pb", "U"}) {
     for (auto repeat = 0; repeat < 10; ++repeat) {
-      auto nucleus = Nucleus::create("Pb");
+      const auto target_dmin = .2 + .4*random::canonical<>();
+      auto nucleus = Nucleus::create("Pb", target_dmin);
       nucleus->sample_nucleons(10*random::canonical<>());
       auto dminsq = 100.;
       for (auto n1 = nucleus->cbegin(); n1 != nucleus->cend(); ++n1) {
@@ -341,7 +342,7 @@ TEST_CASE( "minimum distance" ) {
       }
       auto dmin = std::sqrt(dminsq);
       INFO( "species " << species << " repeat " << repeat );
-      CHECK( dmin > .4 );
+      CHECK( dmin >= target_dmin );
     }
   }
 }

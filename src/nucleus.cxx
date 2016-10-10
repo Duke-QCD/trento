@@ -24,7 +24,7 @@
 
 namespace trento {
 
-NucleusPtr Nucleus::create(const std::string& species) {
+NucleusPtr Nucleus::create(const std::string& species, double nucleon_dmin) {
   // W-S params ref. in header
   // XXX: remember to add new species to the help output in main() and the readme
   if (species == "p")
@@ -33,35 +33,35 @@ NucleusPtr Nucleus::create(const std::string& species) {
     return NucleusPtr{new Deuteron{}};
   else if (species == "Cu")
     return NucleusPtr{new WoodsSaxonNucleus{
-       62, 4.20, 0.596
+       62, 4.20, 0.596, nucleon_dmin
     }};
   else if (species == "Cu2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-       62, 4.20, 0.596, 0.162, -0.006
+       62, 4.20, 0.596, 0.162, -0.006, nucleon_dmin
     }};
   else if (species == "Au")
     return NucleusPtr{new WoodsSaxonNucleus{
-      197, 6.38, 0.535
+      197, 6.38, 0.535, nucleon_dmin
     }};
   else if (species == "Au2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      197, 6.38, 0.535, -0.131, -0.031
+      197, 6.38, 0.535, -0.131, -0.031, nucleon_dmin
     }};
   else if (species == "Pb")
     return NucleusPtr{new WoodsSaxonNucleus{
-      208, 6.62, 0.546
+      208, 6.62, 0.546, nucleon_dmin
     }};
   else if (species == "U")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      238, 6.81, 0.600, 0.280, 0.093
+      238, 6.81, 0.600, 0.280, 0.093, nucleon_dmin
     }};
   else if (species == "U2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      238, 6.86, 0.420, 0.265, 0.000
+      238, 6.86, 0.420, 0.265, 0.000, nucleon_dmin
     }};
   else if (species == "U3")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
-      238, 6.67, 0.440, 0.280, 0.093
+      238, 6.67, 0.440, 0.280, 0.093, nucleon_dmin
     }};
   // Read nuclear configurations from HDF5.
   else if (hdf5::filename_is_hdf5(species)) {
@@ -85,19 +85,6 @@ void Nucleus::sample_nucleons(double offset) {
 void Nucleus::set_nucleon_position(
     iterator nucleon, double x, double y, double z) {
   nucleon->set_position(x + offset_, y, z);
-}
-
-bool Nucleus::is_too_close(const_iterator nucleon) const {
-  constexpr auto dmin = .4;
-  constexpr auto dminsq = dmin*dmin;
-  for (const_iterator nucleon2 = begin(); nucleon2 != nucleon; ++nucleon2) {
-    auto dx = nucleon->x() - nucleon2->x();
-    auto dy = nucleon->y() - nucleon2->y();
-    auto dz = nucleon->z() - nucleon2->z();
-    if (dx*dx + dy*dy + dz*dz < dminsq)
-      return true;
-  }
-  return false;
 }
 
 Proton::Proton() : Nucleus(1) {}
@@ -163,10 +150,29 @@ void Deuteron::sample_nucleons_impl() {
   set_nucleon_position(std::next(begin()), -x, -y, -z);
 }
 
+MinDistNucleus::MinDistNucleus(std::size_t A, double dmin)
+    : Nucleus(A),
+      dminsq_(dmin*dmin)
+{}
+
+bool MinDistNucleus::is_too_close(const_iterator nucleon) const {
+  if (dminsq_ < 1e-10)
+    return false;
+  for (const_iterator nucleon2 = begin(); nucleon2 != nucleon; ++nucleon2) {
+    auto dx = nucleon->x() - nucleon2->x();
+    auto dy = nucleon->y() - nucleon2->y();
+    auto dz = nucleon->z() - nucleon2->z();
+    if (dx*dx + dy*dy + dz*dz < dminsq_)
+      return true;
+  }
+  return false;
+}
+
 // Extend the W-S dist out to R + 10a; for typical values of (R, a), the
 // probability of sampling a nucleon beyond this radius is O(10^-5).
-WoodsSaxonNucleus::WoodsSaxonNucleus(std::size_t A, double R, double a)
-    : Nucleus(A),
+WoodsSaxonNucleus::WoodsSaxonNucleus(
+    std::size_t A, double R, double a, double dmin)
+    : MinDistNucleus(A, dmin),
       R_(R),
       a_(a),
       woods_saxon_dist_(1000, 0., R + 10.*a,
@@ -204,8 +210,10 @@ void WoodsSaxonNucleus::sample_nucleons_impl() {
 
       set_nucleon_position(nucleon, x, y, z);
 
-      // Resample angles up to 10 times (most nucleons need at most 1 or 2).
-    } while (++ntries < 10 && is_too_close(nucleon));
+      // Resample angles up to 100 times.  For small dmin (<~ 0.6 fm), most
+      // nucleons need at most 1 or 2 resamples.  For large dmin (>~ 1.0 fm),
+      // some nucleons cannot be placed so the number of tries must be limited.
+    } while (++ntries < 100 && is_too_close(nucleon));
   }
   // XXX: re-center nucleon positions?
 }
@@ -214,8 +222,8 @@ void WoodsSaxonNucleus::sample_nucleons_impl() {
 // "effective" radius.  The numerical coefficients for beta2 and beta4 are the
 // approximate values of Y20 and Y40 at theta = 0.
 DeformedWoodsSaxonNucleus::DeformedWoodsSaxonNucleus(
-    std::size_t A, double R, double a, double beta2, double beta4)
-    : Nucleus(A),
+    std::size_t A, double R, double a, double beta2, double beta4, double dmin)
+    : MinDistNucleus(A, dmin),
       R_(R),
       a_(a),
       beta2_(beta2),
@@ -302,8 +310,10 @@ void DeformedWoodsSaxonNucleus::sample_nucleons_impl() {
 
       set_nucleon_position(nucleon, x_rot, y_rot, z_rot);
 
-      // Resample angle up to 10 times (most nucleons need at most 1 or 2).
-    } while (++ntries < 10 && is_too_close(nucleon));
+      // Resample angle up to 100 times.  For small dmin (<~ 0.6 fm), most
+      // nucleons need at most 1 or 2 resamples.  For large dmin (>~ 1.0 fm),
+      // some nucleons cannot be placed so the number of tries must be limited.
+    } while (++ntries < 100 && is_too_close(nucleon));
   }
 }
 

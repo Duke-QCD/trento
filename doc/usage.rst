@@ -48,13 +48,8 @@ U3      6.67  0.44  0.280  0.093
 The ``U`` and ``U2`` sets are given in this recent `overview of particle production from PHENIX <http://inspirehep.net/record/1394433>`_.
 All other Woods-Saxon parameters (including ``U3``) and the Hulthén wavefunction parameters are from the `PHOBOS Glauber model <http://inspirehep.net/record/1310629>`_.
 
-.. note::
-
-   For Woods-Saxon nuclei (spherical and deformed), ``trento`` imposes a minimum nucleon-nucleon distance of 0.4 fm.
-   If a sampled nucleon lands too close to a previously sampled nucleon, its angular position is resampled until it lands far enough away.
-   The radius is *not* resampled, since this would effectively modify the Woods-Saxon distribution.
-
-   .. versionadded:: 1.4
+For Woods-Saxon nuclei, ``trento`` can impose a minimum nucleon-nucleon distance.
+See the :ref:`nucleon-min-dist <nucleon-min-dist>` option.
 
 In addition, ``trento`` can read :ref:`arb-configs` saved in HDF5 files.
 
@@ -183,6 +178,20 @@ These options control the physical behavior of the model.
       T_\text{nucleon}(x, y) = \frac{1}{2\pi w^2} \exp\biggl( -\frac{x^2 + y^2}{2w^2} \biggr)
 
    The default is 0.5 fm.
+
+.. _nucleon-min-dist:
+
+``-d, --nucleon-min-dist FLOAT``
+   Minimum nucleon-nucleon distance (fm) for Woods-Saxon nuclei (spherical and deformed).
+   When nonzero, if a sampled nucleon lands too close to a previously sampled nucleon, its angular position is resampled until it lands far enough away.
+   The radius is *not* resampled, since this would effectively modify the Woods-Saxon distribution.
+
+   For large minimum distance (~0.8 fm and above), it may not be possible to place all nucleons.
+   The position is resampled up to 100 times and if a suitable location cannot be found, the algorithm gives up and places the nucleon at the last sampled position.
+
+   The default is zero (no minimum distance).
+
+   .. versionadded:: 1.4
 
 ``-x, --cross-section FLOAT``
    Inelastic nucleon-nucleon cross section |snn| in |fm2|.

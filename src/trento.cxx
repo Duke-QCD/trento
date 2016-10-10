@@ -113,6 +113,9 @@ int main(int argc, char* argv[]) {
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
+    ("nucleon-min-dist,d",
+     po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
+     "minimum nucleon-nucleon distance [fm]")
     ("cross-section,x",
      po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
      "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
