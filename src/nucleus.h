@@ -71,8 +71,13 @@ class Nucleus {
   /// x-direction.
   void sample_nucleons(double offset);
 
+  using size_type = std::vector<Nucleon>::size_type;
   using iterator = std::vector<Nucleon>::iterator;
   using const_iterator = std::vector<Nucleon>::const_iterator;
+
+  // size = number of nucleons
+  size_type size() const noexcept
+  { return nucleons_.size(); }
 
   // non-const overload
   iterator begin() noexcept
@@ -303,9 +308,6 @@ class ManualNucleus : public Nucleus {
 
   /// Internal pointer to HDF5 dataset object (PIMPL-like).
   const std::unique_ptr<H5::DataSet> dataset_;
-
-  /// Internal storage of number of nucleons.
-  const std::size_t A_;
 
   /// Internal storage of the maximum radius.
   const double rmax_;

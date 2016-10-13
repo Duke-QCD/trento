@@ -186,8 +186,9 @@ These options control the physical behavior of the model.
    When nonzero, if a sampled nucleon lands too close to a previously sampled nucleon, its angular position is resampled until it lands far enough away.
    The radius is *not* resampled, since this would effectively modify the Woods-Saxon distribution.
 
-   For large minimum distance (~0.8 fm and above), it may not be possible to place all nucleons.
-   The position is resampled up to 100 times and if a suitable location cannot be found, the algorithm gives up and places the nucleon at the last sampled position.
+   If a nucleon cannot be placed after a reasonable number of retries, the algorithm gives up and leaves the nucleon at the last sampled position.
+   The failure rate is negligible for minimum distances of ~1 fm and below;
+   it reaches roughly 1% at 1.7 fm for spherical nuclei and 1.5 fm for deformed.
 
    The default is zero (no minimum distance).
 
