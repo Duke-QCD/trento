@@ -110,9 +110,9 @@ int main(int argc, char* argv[]) {
     ("fluctuation,k",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
      "gamma fluctuation shape parameter")
-    // ("beam-energy,e",
-    //  po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
-    //  "beam energy sqrt(s) [GeV]")
+    ("beam-energy,e",
+      po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
+     "beam energy sqrt(s) [GeV], used to calculated beam rapitiy")
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")

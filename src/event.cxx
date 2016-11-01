@@ -57,6 +57,8 @@ Event::Event(const VarMap& var_map)
       mean_coeff_(var_map["mean-coeff"].as<double>()),
       std_coeff_(var_map["std-coeff"].as<double>()),
       skew_coeff_(var_map["skew-coeff"].as<double>()),
+      beam_energy_(var_map["beam-energy"].as<double>()),
+      exp_ybeam_((beam_energy_/0.938 + std::sqrt(std::pow(beam_energy_,2)/0.938/0.938 - 4.))*0.5),
       eta2y_(var_map["pt-mt"].as<double>(), var_map["eta-max"].as<double>(), var_map["eta-step"].as<double>()),
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
@@ -196,7 +198,7 @@ void Event::compute_dSdeta() {
       tr = TR_[iy][ix];
       if (tr > 0.)
       {
-        mean = mean_coeff_ * mean_function(ta, tb);
+        mean = mean_coeff_ * mean_function(ta, tb, exp_ybeam_);
         std = std_coeff_ * std_function(ta, tb);
         skew = skew_coeff_ * skew_function(ta, tb);
         mid_norm = skew_normal_function(0.0, mean, std, skew);

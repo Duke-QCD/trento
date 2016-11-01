@@ -6,16 +6,12 @@
 #include <iostream>
 #include <vector>
 
-double const sqrt2 = sqrt(2);
+double const sqrt2 = std::sqrt(2);
 ///----------------------------------------------------------------------------------------------///
 /// feel free to try you own parametrization of y-mean. y-std and y-skew as function of Ta and Tb///
 ///----------------------------------------------------------------------------------------------///
-double inline mean_function(double ta, double tb){
-  if (ta == 0)
-    return -10.0;
-  if (tb == 0)
-    return 10.0;
-  return 0.5*std::log(ta/tb);
+double inline mean_function(double ta, double tb, double exp_ybeam){
+  return 0.5*std::log((ta*exp_ybeam + tb/exp_ybeam)/(ta/exp_ybeam + tb*exp_ybeam));
 }
 
 double inline std_function(double ta, double tb){

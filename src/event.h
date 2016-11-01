@@ -127,6 +127,9 @@ class Event {
   /// Normalization factor.
   const double norm_;
   
+  /// Beam parameter/
+  const double beam_energy_, exp_ybeam_;
+  
   /// Longitudinal Physics coefficient.
   const double mean_coeff_, std_coeff_, skew_coeff_;
   
