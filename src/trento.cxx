@@ -98,7 +98,9 @@ int main(int argc, char* argv[]) {
     ("quiet,q", po::bool_switch(),
      "do not print event properties to stdout")
     ("output,o", po::value<fs::path>()->value_name("PATH"),
-     "HDF5 file or directory for text files");
+     "HDF5 file or directory for text files")
+    ("output-3d,d", po::bool_switch(),
+     "output fill 3d dS/deta data");
 
   OptDesc phys_opts{"physical options"};
   phys_opts.add_options()
@@ -114,6 +116,18 @@ int main(int argc, char* argv[]) {
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
+    ("mean-coeff,m",
+     po::value<double>()->value_name("FLOAT")->default_value(1., "1."),
+     "rapidity mean coefficient")
+    ("std-coeff,s",
+     po::value<double>()->value_name("FLOAT")->default_value(4., "4."),
+     "rapidity std coefficient")
+    ("skew-coeff,t",
+     po::value<double>()->value_name("FLOAT")->default_value(1., "1."),
+     "rapidity tilt coefficient")
+    ("pt-mt,j",
+     po::value<double>()->value_name("FLOAT")->default_value(0.8, "0.8"),
+     "mean pt / mean mt")
     ("cross-section,x",
      po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
      "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
@@ -134,10 +148,16 @@ int main(int argc, char* argv[]) {
   grid_opts.add_options()
     ("grid-max",
      po::value<double>()->value_name("FLOAT")->default_value(10., "10.0"),
-     "xy max [fm]\n(grid extends from -max to +max)")
+     "xy max [fm]\n(transverse grid extends from -max to +max)")
+    ("eta-max",
+     po::value<double>()->value_name("FLOAT")->default_value(0.5, "0.5"),
+     "eta max \n(eta grid extends from -max to +max)")
     ("grid-step",
      po::value<double>()->value_name("FLOAT")->default_value(0.2, "0.2"),
-     "step size [fm]");
+     "transverse step size [fm]")
+    ("eta-step",
+     po::value<double>()->value_name("FLOAT")->default_value(1.0, "1.0"),
+     "eta step size");
 
   // Make a meta-group containing all the option groups except the main
   // positional options (don't want the auto-generated usage info for those).

@@ -61,16 +61,16 @@ HDF5Writer::HDF5Writer(const fs::path& filename)
 void HDF5Writer::operator()(
     int num, double impact_param, const Event& event) const {
   // Prepare arguments for new HDF5 dataset.
-
   // The dataset name is a prefix plus the event number.
+
+  if(event.output3d()) {
   const std::string name{"event_" + std::to_string(num)};
 
   // Cache a reference to the event grid -- will need it several times.
-  const auto& grid = event.reduced_thickness_grid();
-
-  // Define HDF5 datatype and dataspace to match the grid.
-  const auto& datatype = h5_type<Event::Grid::element>();
-  constexpr auto num_dims = Event::Grid::dimensionality;
+  const auto& grid = event.dSdeta_grid();
+  // Define HDF5 datatype and dataspace to match the grid_dSdeta
+  const auto& datatype = h5_type<Event::Grid_dSdeta::element>();
+  constexpr auto num_dims = Event::Grid_dSdeta::dimensionality;
   hsize_t shape[num_dims];
   std::copy(grid.shape(), grid.shape() + num_dims, shape);
   H5::DataSpace dataspace{num_dims, shape};
@@ -88,13 +88,37 @@ void HDF5Writer::operator()(
   // Create the new dataset and write the grid.
   auto dataset = file_.createDataSet(name, datatype, dataspace, proplist);
   dataset.write(grid.data(), datatype);
-
+  
   // Write event attributes.
   h5_add_scalar_attr(dataset, "b", impact_param);
   h5_add_scalar_attr(dataset, "npart", event.npart());
   h5_add_scalar_attr(dataset, "mult", event.multiplicity());
   for (const auto& ecc : event.eccentricity())
     h5_add_scalar_attr(dataset, "e" + std::to_string(ecc.first), ecc.second);
+  }
+  else{
+  const std::string name{"event_" + std::to_string(num)};
+  // Cache a reference to the event grid -- will need it several times.
+  const auto& grid = event.Int_dSdeta_grid();
+  // Define HDF5 datatype and dataspace to match the grid_dSdeta
+  const auto& datatype = h5_type<Event::Grid_1D::element>();
+  constexpr auto num_dims = Event::Grid_1D::dimensionality;
+  hsize_t shape[num_dims];
+  std::copy(grid.shape(), grid.shape() + num_dims, shape);
+  H5::DataSpace dataspace{num_dims, shape};
+  
+  // Create the new dataset and write the grid.
+  auto dataset = file_.createDataSet(name, datatype, dataspace);
+  dataset.write(grid.data(), datatype);
+  
+  // Write event attributes.
+  h5_add_scalar_attr(dataset, "b", impact_param);
+  h5_add_scalar_attr(dataset, "npart", event.npart());
+  h5_add_scalar_attr(dataset, "mult", event.multiplicity());
+  for (const auto& ecc : event.eccentricity())
+    h5_add_scalar_attr(dataset, "e" + std::to_string(ecc.first), ecc.second);
+                                                       
+  }
 }
 
 }  // unnamed namespace

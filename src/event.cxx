@@ -11,6 +11,7 @@
 
 #include "nucleus.h"
 
+#include<iostream>
 namespace trento {
 
 namespace {
@@ -48,11 +49,22 @@ inline double geometric_mean(double a, double b) {
 Event::Event(const VarMap& var_map)
     : norm_(var_map["normalization"].as<double>()),
       dxy_(var_map["grid-step"].as<double>()),
-      nsteps_(std::ceil(2.*var_map["grid-max"].as<double>()/dxy_)),
+      deta_(var_map["eta-step"].as<double>()),
+      nsteps_(std::ceil(2.*var_map["grid-max"].as<double>()/var_map["grid-step"].as<double>())),
+      neta_(std::ceil(2.*var_map["eta-max"].as<double>()/var_map["eta-step"].as<double>())),
       xymax_(.5*nsteps_*dxy_),
+      etamax_(.5*neta_*deta_),
+      mean_coeff_(var_map["mean-coeff"].as<double>()),
+      std_coeff_(var_map["std-coeff"].as<double>()),
+      skew_coeff_(var_map["skew-coeff"].as<double>()),
+      eta2y_(var_map["pt-mt"].as<double>(), var_map["eta-max"].as<double>(), var_map["eta-step"].as<double>()),
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
-      TR_(boost::extents[nsteps_][nsteps_]) {
+      TR_(boost::extents[nsteps_][nsteps_]),
+      dSdeta_(boost::extents[nsteps_][nsteps_][neta_]),
+      Int_dSdeta_(boost::extents[neta_]),
+      switch3d_(var_map["output-3d"].as<bool>()) 
+      {
   // Choose which version of the generalized mean to use based on the
   // configuration.  The possibilities are defined above.  See the header for
   // more information.
@@ -82,6 +94,7 @@ void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
   compute_nuclear_thickness(nucleusA, profile, TA_);
   compute_nuclear_thickness(nucleusB, profile, TB_);
   compute_reduced_thickness_();
+  compute_dSdeta();
   compute_observables();
 }
 
@@ -166,6 +179,42 @@ void Event::compute_reduced_thickness(GenMean gen_mean) {
   multiplicity_ = dxy_ * dxy_ * sum;
   ixcm_ = ixcm / sum;
   iycm_ = iycm / sum;
+}
+
+void Event::compute_dSdeta() {
+  // local variables
+  double eta, rapidity, mean, std, skew, ta, tb, tr, mid_norm, Jacobi;
+
+  for (int iz = 0; iz < neta_; ++iz) {
+    Int_dSdeta_[iz] = 0.0;
+  }
+
+  for (int iy = 0; iy < nsteps_; ++iy) {
+    for (int ix = 0; ix < nsteps_; ++ix) {
+      ta = TA_[iy][ix];
+      tb = TB_[iy][ix];
+      tr = TR_[iy][ix];
+      if (tr > 0.)
+      {
+        mean = mean_coeff_ * mean_function(ta, tb);
+        std = std_coeff_ * std_function(ta, tb);
+        skew = skew_coeff_ * skew_function(ta, tb);
+        mid_norm = skew_normal_function(0.0, mean, std, skew);
+        for (int iz = 0; iz < neta_; ++iz) {
+          eta = -etamax_ + iz*deta_;
+          rapidity = eta2y_.rapidity(eta);
+          Jacobi = eta2y_.Jacobi(eta);
+	  dSdeta_[iy][ix][iz] = tr*skew_normal_function(rapidity, mean, std, skew)/mid_norm*Jacobi;
+          Int_dSdeta_[iz] += dSdeta_[iy][ix][iz]*dxy_*dxy_;
+	}
+      }
+      else{
+        for (int iz = 0; iz < neta_; ++iz) {
+          dSdeta_[iy][ix][iz] = 0.0;
+        }
+      }
+    }
+  }
 }
 
 void Event::compute_observables() {

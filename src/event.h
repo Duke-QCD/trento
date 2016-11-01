@@ -14,6 +14,7 @@
 #include <boost/multi_array.hpp>
 
 #include "fwd_decl.h"
+#include "eta_parametrisation.h"
 
 namespace trento {
 
@@ -53,9 +54,17 @@ class Event {
   void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
                NucleonProfile& profile);
 
-  // Alias for a two-dimensional thickness grid.
+  /// Alias for a 2-dimensional thickness grid for TA, TB, and TR.
   using Grid = boost::multi_array<double, 2>;
-
+  /// Alias for a 3-dims dS/deta grid, (size of 3rd dim = 1 as default --> go back to 2d case)
+  using Grid_dSdeta = boost::multi_array<double, 3>;
+  /// integrated dSdeta
+  using Grid_1D = boost::multi_array<double, 1>;
+  /// use 3d output or 1D output
+  const bool& output3d(void) const
+  {
+    return switch3d_;
+  }
   /// Number of nucleon participants.
   const int& npart() const
   { return npart_; }
@@ -77,9 +86,18 @@ class Event {
   const std::map<int, double>& eccentricity() const
   { return eccentricity_; }
 
-  /// The reduced thickness grid as a square two-dimensional array.
+  /// The reduced thickness grid as a square 2-dimensional array.
   const Grid& reduced_thickness_grid() const
   { return TR_; }
+  
+  /// The dS/deta grid as a 3-dims array
+  const Grid_dSdeta& dSdeta_grid() const
+  { return dSdeta_; }
+ 
+  /// The Integrated dS/deta grid as a 1-dims array
+  const Grid_1D& Int_dSdeta_grid() const
+  { return Int_dSdeta_; }
+
 
  private:
   /// Compute a nuclear thickness function (TA or TB) onto a grid for a given
@@ -99,25 +117,39 @@ class Event {
   /// allow the compiler to fully inline the GenMean function and only require a
   /// single "virtual" function call per event.
   std::function<void()> compute_reduced_thickness_;
+ 
+  /// With TA, TB, and TR, compute 3d entropy deposition
+  void compute_dSdeta(void);
 
   /// Compute observables that require a second pass over the reduced thickness grid.
   void compute_observables();
 
   /// Normalization factor.
   const double norm_;
-
+  
+  /// Longitudinal Physics coefficient.
+  const double mean_coeff_, std_coeff_, skew_coeff_;
+  
+  /// fast eta to y transformer
+  fast_eta2y eta2y_;
+  
   /// Grid step size.
-  const double dxy_;
+  const double dxy_, deta_;
 
   /// Number of grid steps.
-  const int nsteps_;
+  const int nsteps_, neta_;
 
   /// Grid xy maximum (half width).
-  const double xymax_;
+  const double xymax_, etamax_;
 
   /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
   Grid TA_, TB_, TR_;
-
+  /// dS/deta grid
+  Grid_dSdeta dSdeta_;
+  /// Integrated dSdeta
+  Grid_1D Int_dSdeta_;
+  /// Swithc for 3d output
+  bool switch3d_;
   /// Center of mass coordinates in "units" of grid index (not fm).
   double ixcm_, iycm_;
 
