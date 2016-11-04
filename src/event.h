@@ -14,6 +14,7 @@
 #include <boost/multi_array.hpp>
 
 #include "fwd_decl.h"
+#include "rapidity_profile.h"
 
 namespace trento {
 
@@ -53,8 +54,11 @@ class Event {
   void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
                NucleonProfile& profile);
 
-  // Alias for a two-dimensional thickness grid.
+  /// Alias for a 2-dimensional grid
   using Grid = boost::multi_array<double, 2>;
+
+  /// Alias for a 3-dimensional grid
+  using Grid3D = boost::multi_array<double, 3>;
 
   /// Number of nucleon participants.
   const int& npart() const
@@ -77,9 +81,9 @@ class Event {
   const std::map<int, double>& eccentricity() const
   { return eccentricity_; }
 
-  /// The reduced thickness grid as a square two-dimensional array.
-  const Grid& reduced_thickness_grid() const
-  { return TR_; }
+  /// The entropy (particle) density grid as a three-dimensional array.
+  const Grid3D& density_grid() const
+  { if (is3D()) return density_; return TR_; }
 
  private:
   /// Compute a nuclear thickness function (TA or TB) onto a grid for a given
@@ -99,24 +103,39 @@ class Event {
   /// allow the compiler to fully inline the GenMean function and only require a
   /// single "virtual" function call per event.
   std::function<void()> compute_reduced_thickness_;
-
+ 
   /// Compute observables that require a second pass over the reduced thickness grid.
   void compute_observables();
 
+  // Returns true if running in 3D mode, false otherwise.
+  bool is3D() const;
+
   /// Normalization factor.
   const double norm_;
-
+  
+  /// Beam energy sqrt(s) and beam rapidity y.
+  const double beam_energy_, exp_ybeam_;
+  
+  /// Rapidity distribution cumulant coefficients.
+  const double mean_coeff_, std_coeff_, skew_coeff_;
+  
   /// Grid step size.
-  const double dxy_;
+  const double dxy_, deta_;
 
   /// Number of grid steps.
-  const int nsteps_;
+  const int nsteps_, neta_;
 
   /// Grid xy maximum (half width).
-  const double xymax_;
+  const double xymax_, etamax_;
+  
+  /// fast eta to y transformer.
+  fast_eta2y eta2y_;
 
-  /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
-  Grid TA_, TB_, TR_;
+  /// Nuclear thickness grids TA and TB.
+  Grid TA_, TB_;
+
+  /// Reduced thickness and entropy (particle) density grids
+  Grid3D TR_, density_;
 
   /// Center of mass coordinates in "units" of grid index (not fm).
   double ixcm_, iycm_;

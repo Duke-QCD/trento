@@ -36,6 +36,13 @@ inline double geometric_mean(double a, double b) {
   return std::sqrt(a*b);
 }
 
+// Get beam rapidity from beam energy sqrt(s)
+double beam_rapidity(double beam_energy) {
+  // Proton mass in GeV
+  constexpr double mp = 0.938;
+  return 0.5 * (beam_energy/mp + std::sqrt(std::pow(beam_energy/mp, 2) - 4.));
+}
+
 }  // unnamed namespace
 
 // Determine the grid parameters like so:
@@ -47,14 +54,24 @@ inline double geometric_mean(double a, double b) {
 //      larger (by at most one step size).
 Event::Event(const VarMap& var_map)
     : norm_(var_map["normalization"].as<double>()),
-      dxy_(var_map["grid-step"].as<double>()),
-      nsteps_(std::ceil(2.*var_map["grid-max"].as<double>()/dxy_)),
+      beam_energy_(var_map["beam-energy"].as<double>()),
+      exp_ybeam_(beam_rapidity(beam_energy_)),
+      mean_coeff_(var_map["mean-coeff"].as<double>()),
+      std_coeff_(var_map["std-coeff"].as<double>()),
+      skew_coeff_(var_map["skew-coeff"].as<double>()),
+      dxy_(var_map["xy-step"].as<double>()),
+      deta_(var_map["eta-step"].as<double>()),
+      nsteps_(std::ceil(2.*var_map["xy-max"].as<double>()/dxy_)),
+      neta_(std::ceil(2.*var_map["eta-max"].as<double>()/deta_)),
       xymax_(.5*nsteps_*dxy_),
+      etamax_(.5*neta_*deta_),
+      eta2y_(var_map["jacobian"].as<double>(), etamax_, deta_),
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
-      TR_(boost::extents[nsteps_][nsteps_]) {
+      TR_(boost::extents[nsteps_][nsteps_][1]),
+      density_(boost::extents[nsteps_][nsteps_][neta_]) {
   // Choose which version of the generalized mean to use based on the
-  // configuration.  The possibilities are defined above.  See the header for
+  // configuration. The possibilities are defined above.  See the header for
   // more information.
   auto p = var_map["reduced-thickness"].as<double>();
 
@@ -83,6 +100,10 @@ void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
   compute_nuclear_thickness(nucleusB, profile, TB_);
   compute_reduced_thickness_();
   compute_observables();
+}
+
+bool Event::is3D() const {
+  return etamax_ > TINY;
 }
 
 namespace {
@@ -153,8 +174,26 @@ void Event::compute_reduced_thickness(GenMean gen_mean) {
 
   for (int iy = 0; iy < nsteps_; ++iy) {
     for (int ix = 0; ix < nsteps_; ++ix) {
-      auto t = norm_ * gen_mean(TA_[iy][ix], TB_[iy][ix]);
-      TR_[iy][ix] = t;
+      auto ta = TA_[iy][ix];
+      auto tb = TB_[iy][ix];
+      auto t = norm_ * gen_mean(ta, tb);
+      TR_[iy][ix][0] = t;
+
+      if (etamax_ > TINY) {
+        auto mean = mean_coeff_ * mean_function(ta, tb, exp_ybeam_);
+        auto std = std_coeff_ * std_function(ta, tb);
+        auto skew = skew_coeff_ * skew_function(ta, tb);
+        auto mid_norm = skew_normal_function(0., mean, std, skew);
+
+        for (int ieta = 0; ieta < neta_; ++ieta) {
+            auto eta = -etamax_ + ieta*deta_;
+            auto rapidity = eta2y_.rapidity(eta);
+            auto jacobian = eta2y_.Jacobian(eta);
+            auto rapidity_dist = skew_normal_function(rapidity, mean, std, skew);
+            density_[iy][ix][ieta] = t * rapidity_dist / mid_norm * jacobian;
+        }
+      }
+
       sum += t;
       // Center of mass grid indices.
       // No need to multiply by dxy since it would be canceled later.
@@ -182,7 +221,7 @@ void Event::compute_observables() {
 
   for (int iy = 0; iy < nsteps_; ++iy) {
     for (int ix = 0; ix < nsteps_; ++ix) {
-      const auto& t = TR_[iy][ix];
+      const auto& t = TR_[iy][ix][0];
       if (t < TINY)
         continue;
 

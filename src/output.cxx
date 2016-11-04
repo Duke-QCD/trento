@@ -67,15 +67,17 @@ void write_text_file(const fs::path& output_dir, int width,
   // fixed-width) so that trailing zeros are omitted.  This significantly
   // increases output speed and saves disk space since many grid elements are
   // zero.
-  for (const auto& row : event.reduced_thickness_grid()) {
-    auto&& iter = row.begin();
-    // Write all row elements except the last with a space delimiter afterwards.
-    do {
-      ofs << *iter << ' ';
-    } while (++iter != --row.end());
+  for (const auto& slice : event.density_grid()) {
+    for (const auto& row : slice) {
+      auto&& iter = row.begin();
+      // Write all row elements except the last with a space delimiter afterwards.
+      do {
+        ofs << *iter << ' ';
+      } while (++iter != --row.end());
 
-    // Write the last element and a linebreak.
-    ofs << *iter << '\n';
+      // Write the last element and a linebreak.
+      ofs << *iter << '\n';
+    }
   }
 }
 
@@ -116,11 +118,11 @@ void HDF5Writer::operator()(
   const std::string name{"event_" + std::to_string(num)};
 
   // Cache a reference to the event grid -- will need it several times.
-  const auto& grid = event.reduced_thickness_grid();
+  const auto& grid = event.density_grid();
 
   // Define HDF5 datatype and dataspace to match the grid.
-  const auto& datatype = hdf5::type<Event::Grid::element>();
-  std::array<hsize_t, Event::Grid::dimensionality> shape;
+  const auto& datatype = hdf5::type<Event::Grid3D::element>();
+  std::array<hsize_t, Event::Grid3D::dimensionality> shape;
   std::copy(grid.shape(), grid.shape() + shape.size(), shape.begin());
   auto dataspace = hdf5::make_dataspace(shape);
 
@@ -137,7 +139,7 @@ void HDF5Writer::operator()(
   // Create the new dataset and write the grid.
   auto dataset = file_.createDataSet(name, datatype, dataspace, proplist);
   dataset.write(grid.data(), datatype);
-
+  
   // Write event attributes.
   hdf5_add_scalar_attr(dataset, "b", impact_param);
   hdf5_add_scalar_attr(dataset, "npart", event.npart());

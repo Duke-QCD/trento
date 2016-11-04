@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(trento CXX)
+project(trento3d CXX)
 
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" CXX11)

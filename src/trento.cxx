@@ -116,6 +116,21 @@ int main(int argc, char* argv[]) {
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
+    ("beam-energy,e",
+      po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
+     "beam energy sqrt(s) [GeV], used to calculated beam rapitiy")
+    ("mean-coeff,m",
+     po::value<double>()->value_name("FLOAT")->default_value(1., "1."),
+     "rapidity mean coefficient")
+    ("std-coeff,s",
+     po::value<double>()->value_name("FLOAT")->default_value(4., "4."),
+     "rapidity std coefficient")
+    ("skew-coeff,t",
+     po::value<double>()->value_name("FLOAT")->default_value(1., "1."),
+     "rapidity skew coefficient")
+    ("jacobian,j",
+     po::value<double>()->value_name("FLOAT")->default_value(0.8, "0.8"),
+     "<pt>/<mt> used in Jacobian")
     ("cross-section,x",
      po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
      "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
@@ -134,12 +149,18 @@ int main(int argc, char* argv[]) {
 
   OptDesc grid_opts{"grid options"};
   grid_opts.add_options()
-    ("grid-max",
+    ("xy-max",
      po::value<double>()->value_name("FLOAT")->default_value(10., "10.0"),
-     "xy max [fm]\n(grid extends from -max to +max)")
-    ("grid-step",
+     "xy max [fm]\n(transverse grid extends from -max to +max)")
+    ("eta-max",
+     po::value<double>()->value_name("FLOAT")->default_value(0., "0.0"),
+     "pseudorapidity max \n(eta grid extends from -max to +max)")
+    ("xy-step",
      po::value<double>()->value_name("FLOAT")->default_value(0.2, "0.2"),
-     "step size [fm]");
+     "transverse step size [fm]")
+    ("eta-step",
+     po::value<double>()->value_name("FLOAT")->default_value(0.5, "0.5"),
+     "pseudorapidity step size");
 
   // Make a meta-group containing all the option groups except the main
   // positional options (don't want the auto-generated usage info for those).
@@ -159,6 +180,7 @@ int main(int argc, char* argv[]) {
   // Will be used several times.
   const std::string usage_str{
     "usage: trento [options] projectile projectile [number-events = 1]\n"};
+
 
   try {
     // Initialize a VarMap (boost::program_options::variables_map).
