@@ -117,8 +117,11 @@ int main(int argc, char* argv[]) {
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
     ("beam-energy,e",
-      po::value<double>()->value_name("FLOAT")->default_value(2760., "2760"),
-     "beam energy sqrt(s) [GeV], used to calculated beam rapitiy")
+     po::value<double>()->value_name("FLOAT")->default_value(2760, "2760"),
+     "collision beam energy sqrt(s) [GeV], initializes cross section")
+    ("cross-section,x",
+     po::value<double>()->value_name("FLOAT")->default_value(-1, "off"),
+     "manual inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
     ("mean-coeff,m",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1."),
      "rapidity mean coefficient")
@@ -131,9 +134,6 @@ int main(int argc, char* argv[]) {
     ("jacobian,j",
      po::value<double>()->value_name("FLOAT")->default_value(0.8, "0.8"),
      "<pt>/<mt> used in Jacobian")
-    ("cross-section,x",
-     po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
-     "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
     ("normalization,n",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
      "normalization factor")

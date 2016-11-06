@@ -47,11 +47,27 @@ constexpr T sqr(T value) {
   return value * value;
 }
 
+// Inelastic nucleon-nucleon cross section as function of beam energy sqrt(s)
+// Fit coefficients explained in the docs.
+double cross_sec_from_energy(double sqrts) {
+  auto a = 3.1253;
+  auto b = 0.1280;
+  auto c = 2.0412;
+  auto d = 1.8231;
+  return a + b * pow(std::log(sqrts) - c, d);
+}
+
 // Determine the cross section parameter for sampling participants.
 // See section "Fitting the cross section" in the online docs.
 double compute_cross_sec_param(const VarMap& var_map) {
   // Read parameters from the configuration.
+
+  // Use manual inelastic nucleon-nucleon cross section if specified.
+  // Otherwise default to extrapolated cross section.
   auto sigma_nn = var_map["cross-section"].as<double>();
+  if (sigma_nn < 0) {
+    sigma_nn = cross_sec_from_energy(var_map["beam-energy"].as<double>());
+  }
   auto width = var_map["nucleon-width"].as<double>();
 
   // Initialize arguments for boost root finding function.
