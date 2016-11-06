@@ -116,12 +116,6 @@ int main(int argc, char* argv[]) {
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
-    ("beam-energy,e",
-     po::value<double>()->value_name("FLOAT")->default_value(2760, "2760"),
-     "collision beam energy sqrt(s) [GeV], initializes cross section")
-    ("cross-section,x",
-     po::value<double>()->value_name("FLOAT")->default_value(-1, "off"),
-     "manual inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
     ("mean-coeff,m",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1."),
      "rapidity mean coefficient")
@@ -136,7 +130,16 @@ int main(int argc, char* argv[]) {
      "<pt>/<mt> used in Jacobian")
     ("normalization,n",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
-     "normalization factor")
+     "normalization factor");
+
+  OptDesc coll_opts{"collision options"};
+  coll_opts.add_options()
+    ("beam-energy,e",
+     po::value<double>()->value_name("FLOAT")->default_value(2760, "2760"),
+     "collision beam energy sqrt(s) [GeV], initializes cross section")
+    ("cross-section,x",
+     po::value<double>()->value_name("FLOAT")->default_value(-1, "off"),
+     "manual inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
     ("b-min",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum impact parameter [fm]")
@@ -151,13 +154,13 @@ int main(int argc, char* argv[]) {
   grid_opts.add_options()
     ("xy-max",
      po::value<double>()->value_name("FLOAT")->default_value(10., "10.0"),
-     "xy max [fm]\n(transverse grid extends from -max to +max)")
-    ("eta-max",
-     po::value<double>()->value_name("FLOAT")->default_value(0., "0.0"),
-     "pseudorapidity max \n(eta grid extends from -max to +max)")
+     "xy max [fm]\n(transverse grid from -max to +max)")
     ("xy-step",
      po::value<double>()->value_name("FLOAT")->default_value(0.2, "0.2"),
      "transverse step size [fm]")
+    ("eta-max",
+     po::value<double>()->value_name("FLOAT")->default_value(0., "0.0"),
+     "pseudorapidity max \n(eta grid from -max to +max)")
     ("eta-step",
      po::value<double>()->value_name("FLOAT")->default_value(0.5, "0.5"),
      "pseudorapidity step size");
@@ -169,6 +172,7 @@ int main(int argc, char* argv[]) {
     .add(general_opts)
     .add(output_opts)
     .add(phys_opts)
+    .add(coll_opts)
     .add(grid_opts);
 
   // Now a meta-group containing _all_ options.
