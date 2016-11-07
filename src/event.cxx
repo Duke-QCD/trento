@@ -10,6 +10,7 @@
 #include <boost/program_options/variables_map.hpp>
 
 #include "nucleus.h"
+#include <iostream>
 
 namespace trento {
 
@@ -179,7 +180,7 @@ void Event::compute_reduced_thickness(GenMean gen_mean) {
       auto t = norm_ * gen_mean(ta, tb);
       TR_[iy][ix][0] = t;
 
-      if (etamax_ > TINY) {
+      if (is3D()) {
         auto mean = mean_coeff_ * mean_function(ta, tb, exp_ybeam_);
         auto std = std_coeff_ * std_function(ta, tb);
         auto skew = skew_coeff_ * skew_function(ta, tb);

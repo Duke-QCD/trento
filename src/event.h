@@ -82,8 +82,11 @@ class Event {
   { return eccentricity_; }
 
   /// The entropy (particle) density grid as a three-dimensional array.
-  const Grid3D& density_grid() const
-  { if (is3D()) return density_; return TR_; }
+  const Grid3D& density_grid() const {
+    if (is3D())
+      return density_;
+    return TR_;
+  }
 
  private:
   /// Compute a nuclear thickness function (TA or TB) onto a grid for a given

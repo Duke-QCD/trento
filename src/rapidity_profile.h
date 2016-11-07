@@ -36,7 +36,6 @@ double inline skew_normal_function(double eta, double xi, double omega, double a
 /// Output both y(eta) and dy/deta(eta)
 class fast_eta2y {
  private:
-  double J_;
   double etamax_;
   double deta_;
   std::size_t neta_;
@@ -44,8 +43,7 @@ class fast_eta2y {
   std::vector<double> dydeta_;
  public:
   fast_eta2y(double J, double etamax, double deta)
-      : J_(J),
-        etamax_(etamax),
+      : etamax_(etamax),
         deta_(deta),
         neta_(std::ceil(2.*etamax_/deta_)),
         y_(neta_, 0.),
@@ -53,7 +51,7 @@ class fast_eta2y {
 
     for (std::size_t ieta = 0; ieta < neta_; ++ieta) {
       double eta = -etamax_ + ieta*deta_;
-      double Jsh = J_*std::sinh(eta);
+      double Jsh = J*std::sinh(eta);
       double sq = std::sqrt(1. + Jsh*Jsh);
       y_[ieta] = std::log(sq + Jsh);
       dydeta_[ieta] = J*std::cosh(eta)/sq;
