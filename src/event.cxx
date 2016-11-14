@@ -38,7 +38,7 @@ inline double geometric_mean(double a, double b) {
 }
 
 // Get beam rapidity from beam energy sqrt(s)
-double beam_rapidity(double beam_energy) {
+double exp_beam_rapidity(double beam_energy) {
   // Proton mass in GeV
   constexpr double mp = 0.938;
   return 0.5 * (beam_energy/mp + std::sqrt(std::pow(beam_energy/mp, 2) - 4.));
@@ -56,7 +56,7 @@ double beam_rapidity(double beam_energy) {
 Event::Event(const VarMap& var_map)
     : norm_(var_map["normalization"].as<double>()),
       beam_energy_(var_map["beam-energy"].as<double>()),
-      exp_ybeam_(beam_rapidity(beam_energy_)),
+      exp_ybeam_(exp_beam_rapidity(beam_energy_)),
       mean_coeff_(var_map["mean-coeff"].as<double>()),
       std_coeff_(var_map["std-coeff"].as<double>()),
       skew_coeff_(var_map["skew-coeff"].as<double>()),
@@ -184,13 +184,13 @@ void Event::compute_reduced_thickness(GenMean gen_mean) {
         auto mean = mean_coeff_ * mean_function(ta, tb, exp_ybeam_);
         auto std = std_coeff_ * std_function(ta, tb);
         auto skew = skew_coeff_ * skew_function(ta, tb);
-        auto mid_norm = skew_normal_function(0., mean, std, skew);
+        auto mid_norm = exp_gaussian(0., mean, std, skew);
 
         for (int ieta = 0; ieta < neta_; ++ieta) {
             auto eta = -etamax_ + ieta*deta_;
             auto rapidity = eta2y_.rapidity(eta);
             auto jacobian = eta2y_.Jacobian(eta);
-            auto rapidity_dist = skew_normal_function(rapidity, mean, std, skew);
+            auto rapidity_dist = exp_gaussian(rapidity, mean, std, skew);
             density_[iy][ix][ieta] = t * rapidity_dist / mid_norm * jacobian;
         }
       }

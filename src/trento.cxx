@@ -228,6 +228,7 @@ int main(int argc, char* argv[]) {
         .add(main_opts)
         .add(output_opts)
         .add(phys_opts)
+        .add(coll_opts)
         .add(grid_opts);
 
       for (const auto& path : var_map["config-file"].as<VecPath>()) {
