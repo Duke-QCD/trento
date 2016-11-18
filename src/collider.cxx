@@ -31,10 +31,10 @@ NucleusPtr create_nucleus(const VarMap& var_map, std::size_t index) {
 // non-negative value for bmax, use it; otherwise, fall back to the minimum-bias
 // default.
 double determine_bmax(const VarMap& var_map,
-    const Nucleus& A, const Nucleus& B, const NucleonProfile& profile) {
+    const Nucleus& A, const Nucleus& B, const NucleonCommon& nc) {
   auto bmax = var_map["b-max"].as<double>();
   if (bmax < 0.)
-    bmax = A.radius() + B.radius() + profile.max_impact();
+    bmax = A.radius() + B.radius() + nc.max_impact();
   return bmax;
 }
 
@@ -58,10 +58,10 @@ double determine_asym(const Nucleus& A, const Nucleus& B) {
 Collider::Collider(const VarMap& var_map)
     : nucleusA_(create_nucleus(var_map, 0)),
       nucleusB_(create_nucleus(var_map, 1)),
-      nucleon_profile_(var_map),
+      nucleon_common_(var_map),
       nevents_(var_map["number-events"].as<int>()),
       bmin_(var_map["b-min"].as<double>()),
-      bmax_(determine_bmax(var_map, *nucleusA_, *nucleusB_, nucleon_profile_)),
+      bmax_(determine_bmax(var_map, *nucleusA_, *nucleusB_, nucleon_common_)),
       asymmetry_(determine_asym(*nucleusA_, *nucleusB_)),
       event_(var_map),
       output_(var_map) {
@@ -84,7 +84,7 @@ void Collider::run_events() {
 
     // Pass the prepared nuclei to the Event.  It computes the entropy profile
     // (thickness grid) and other event observables.
-    event_.compute(*nucleusA_, *nucleusB_, nucleon_profile_);
+    event_.compute(*nucleusA_, *nucleusB_, nucleon_common_);
 
     // Write event data.
     output_(n, b, event_);
@@ -109,7 +109,7 @@ double Collider::sample_impact_param() {
     // Check each nucleon-nucleon pair.
     for (auto&& A : *nucleusA_) {
       for (auto&& B : *nucleusB_) {
-        collision = nucleon_profile_.participate(A, B) || collision;
+        collision = nucleon_common_.participate(A, B) || collision;
       }
     }
   } while (!collision);

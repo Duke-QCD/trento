@@ -113,6 +113,12 @@ int main(int argc, char* argv[]) {
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
+    ("parton-width,v",
+     po::value<double>()->value_name("FLOAT")->default_value(.3, "0.3"),
+     "Gaussian parton width [fm]")
+    ("parton-number,m",
+     po::value<int>()->value_name("INT")->default_value(1, "1"),
+     "Number of partons in the nucleon")
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")

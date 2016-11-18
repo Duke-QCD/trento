@@ -71,9 +71,9 @@ class Nucleus {
   /// x-direction.
   void sample_nucleons(double offset);
 
-  using size_type = std::vector<Nucleon>::size_type;
-  using iterator = std::vector<Nucleon>::iterator;
-  using const_iterator = std::vector<Nucleon>::const_iterator;
+  using size_type = std::vector<NucleonData>::size_type;
+  using iterator = std::vector<NucleonData>::iterator;
+  using const_iterator = std::vector<NucleonData>::const_iterator;
 
   // size = number of nucleons
   size_type size() const noexcept
@@ -108,7 +108,7 @@ class Nucleus {
   /// ``Nucleus`` is a friend of ``Nucleon`` and therefore able to set nucleon
   /// positions; the derived classes must use this function to set positions.
   /// \endrst
-  void set_nucleon_position(iterator nucleon, double x, double y, double z);
+  void set_nucleon_position(NucleonData& nucleon, double x, double y, double z);
 
  private:
   /// Internal interface to the actual implementation of the nucleon sampling
@@ -117,8 +117,8 @@ class Nucleus {
   /// protected function set_nucleon_position(), which enforces the offset.
   virtual void sample_nucleons_impl() = 0;
 
-  /// Internal storage of Nucleon objects.
-  std::vector<Nucleon> nucleons_;
+  /// Internal storage of NucleonData objects.
+  std::vector<NucleonData> nucleons_;
 
   /// Offset of nucleon x-positions.
   /// This variable is reset upon each call of sample_nucleons() and is read by

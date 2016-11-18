@@ -9,10 +9,15 @@
 #include <random>
 #include <stdexcept>
 
+#include <cstdlib>
+#include <iostream>
+
 #include <boost/math/constants/constants.hpp>
 #include <boost/math/special_functions/expint.hpp>
 #include <boost/math/tools/roots.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <boost/filesystem.hpp>
+
 
 #include "fwd_decl.h"
 
@@ -32,27 +37,35 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
   return param_type<RealType>{alpha, 1./alpha};
 }
 
+// Return appropriate path to temporary file directory.
+// Used to store cross section parameter \sigma_qq.
+fs::path get_data_home() {
+  const auto data_path = std::getenv("xdg_data_home");
+  if(data_path == nullptr)
+    return fs::path{std::getenv("home")} / ".local/share";
+  return data_path;
+}
+
 // These constants define distances in terms of the width of the nucleon profile
 // Gaussian thickness function.
 
 // Truncation radius of the thickness function.
-constexpr double trunc_radius_widths = 5.;
+constexpr double radius_widths = 5.;
 
 // Maximum impact parameter for participation.
 constexpr double max_impact_widths = 6.;
 
-// Trivial helper function.
-template <typename T>
-constexpr T sqr(T value) {
-  return value * value;
-}
-
-// Determine the cross section parameter for sampling participants.
-// See section "Fitting the cross section" in the online docs.
-double compute_cross_sec_param(const VarMap& var_map) {
+// Determine the effective parton-parton cross section for sampling participants.
+// TODO: derive this
+double compute_sigma_qq(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto width = var_map["nucleon-width"].as<double>();
+
+  // TODO: automatically set from beam energy
+  // if (sigma_nn < 0.) {
+  //   auto sqrt_s = var_map["beam-energy"].as<double>();
+  // }
 
   // Initialize arguments for boost root finding function.
 
@@ -94,17 +107,54 @@ double compute_cross_sec_param(const VarMap& var_map) {
   }
 }
 
+double monte_carlo_sigma_qq(const VarMap& var_map) {
+  // Read parameters from the configuration.
+  auto sigma_nn = var_map["cross-section"].as<double>();
+  auto width = var_map["nucleon-width"].as<double>();
+
+  // create trento cache directory
+  auto cache_path = get_data_home() / "/trento/";
+  std::cout << cache_path << std::endl;
+  fs::create_directory(cache_path);
+
+  // create dummy cross section file
+  //std::ofstream cache_file("cross_section.dat", std::ios_base::in | std::ios_base::app);
+  //cache_file << 6.04 << std::setw(10) <<  0.5 << std::setw(10) << 0.3 << std::setw(10) << 3 << std::endl;
+  //cache_file.close();
+
+  return 1.;
+}
+
+// Determine the width of the normal distribution for sampling parton positions.
+double compute_parton_sampling_width(const VarMap& var_map) {
+  // Read parameters from the configuration.
+  auto nucleon_width = var_map["nucleon-width"].as<double>();
+  auto parton_width = var_map["parton-width"].as<double>();
+
+  // Compute Gaussian sampling width by deconvolving the parton profile from the
+  // nucleon profile.  The convolution of two Gaussians is a third Gaussian
+  // with the variances simply added together.
+  auto sampling_width_sq = sqr(nucleon_width) - sqr(parton_width);
+
+  if (sampling_width_sq < 0.)
+    throw std::out_of_range{
+      "the parton width cannot be larger than the nucleon width"};
+
+  return std::sqrt(sampling_width_sq);
+}
+
 }  // unnamed namespace
 
-NucleonProfile::NucleonProfile(const VarMap& var_map)
-    : width_sqr_(sqr(var_map["nucleon-width"].as<double>())),
-      trunc_radius_sqr_(sqr(trunc_radius_widths)*width_sqr_),
-      max_impact_sqr_(sqr(max_impact_widths)*width_sqr_),
-      neg_one_div_two_width_sqr_(-.5/width_sqr_),
-      cross_sec_param_(compute_cross_sec_param(var_map)),
-      fast_exp_(-.5*sqr(trunc_radius_widths), 0., 1000),
-      fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
-      prefactor_(math::double_constants::one_div_two_pi/width_sqr_)
+NucleonCommon::NucleonCommon(const VarMap& var_map)
+    : fast_exp_(-.5*sqr(radius_widths), 0., 1000),
+      max_impact_sq_(sqr(max_impact_widths*var_map["nucleon-width"].as<double>())),
+      parton_width_sq_(sqr(var_map["parton-width"].as<double>())),
+      parton_radius_sq_(sqr(radius_widths)*parton_width_sq_),
+      npartons_(var_map["parton-number"].as<int>()),
+      sigma_qq_(compute_sigma_qq(var_map)),
+      prefactor_(math::double_constants::one_div_two_pi/parton_width_sq_/npartons_),
+      nucleon_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
+      parton_position_dist_(0, compute_parton_sampling_width(var_map))
 {}
 
 }  // namespace trento

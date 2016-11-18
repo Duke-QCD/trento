@@ -5,6 +5,9 @@
 #ifndef NUCLEON_H
 #define NUCLEON_H
 
+#include <array>
+#include <vector>
+
 #include <boost/math/constants/constants.hpp>
 
 #include "fast_exp.h"
@@ -13,73 +16,24 @@
 
 namespace trento {
 
-class Nucleon;
+// TODO explain this class structure
 
 /// \rst
-/// Encapsulates properties shared by all nucleons: transverse thickness
-/// profile, cross section, fluctuations.  Responsible for sampling
-/// nucleon-nucleon participation with given `\sigma_{NN}`.
+/// Represents a single nucleon.  Stores its transverse position and whether or
+/// not it's a participant.  These properties are globally readable, but can
+/// only be set through ``Nucleus`` and ``NucleonProfile``.
 /// \endrst
-class NucleonProfile {
- public:
-  /// Instantiate from the configuration.
-  explicit NucleonProfile(const VarMap& var_map);
-
-  /// The radius at which the nucleon profile is truncated.
-  double radius() const;
-
-  /// The maximum impact parameter for participation.
-  double max_impact() const;
-
-  /// Randomly fluctuate the profile.  Should be called prior to evaluating the
-  /// thickness function for a new nucleon.
-  void fluctuate();
-
-  /// Compute the thickness function at a (squared) distance from the profile
-  /// center.
-  double thickness(double distance_sqr) const;
-
-  /// Randomly determine if a pair of nucleons participates.
-  bool participate(Nucleon& A, Nucleon& B) const;
-
- private:
-  /// Width of Gaussian thickness function.
-  const double width_sqr_;
-
-  /// Truncate the Gaussian at this radius.
-  const double trunc_radius_sqr_;
-
-  /// Maximum impact parameter for participants.
-  const double max_impact_sqr_;
-
-  /// Cache (-1/2w^2) for use in the thickness function exponential.
-  /// Yes, this actually makes a speed difference...
-  const double neg_one_div_two_width_sqr_;
-
-  /// Dimensionless parameter set to reproduce the inelastic nucleon-nucleon
-  /// cross section \sigma_{NN}.  Calculated in constructor.
-  const double cross_sec_param_;
-
-  /// Fast exponential for calculating the thickness profile.
-  const FastExp<double> fast_exp_;
-
-  /// Fluctuation distribution.
-  std::gamma_distribution<double> fluct_dist_;
-
-  /// Thickness function prefactor = fluct/(2*pi*w^2)
-  double prefactor_;
-};
-
-/// \rst
-/// Represents a single nucleon.  Stores its position and whether or not it's a
-/// participant.  These properties are globally readable, but can only be set
-/// through ``Nucleus`` and ``NucleonProfile``.
-/// \endrst
-class Nucleon {
+class NucleonData {
  public:
   /// Only a default constructor is necessary\---the class is designed to be
   /// constructed once and repeatedly updated.
-  Nucleon() = default;
+  NucleonData() = default;
+
+  /// Whether or not this nucleon is a participant.
+  bool is_participant() const;
+
+  ///
+  bool partons_sampled() const;
 
   /// The transverse \em x position.
   double x() const;
@@ -90,95 +44,200 @@ class Nucleon {
   /// The longitudinal \em z position.
   double z() const;
 
-  /// Whether or not this nucleon is a participant.
-  bool is_participant() const;
+  ///
+  double fluctuation() const;
 
  private:
+  ///
+  friend class NucleonCommon;
+
   /// A Nucleus must be able to set its Nucleon positions.
   friend class Nucleus;
 
-  /// The NucleonProfile samples participants so must be able to set
-  /// participation status.
-  friend bool NucleonProfile::participate(Nucleon&, Nucleon&) const;
-
-  /// Set the position and reset participant status to false.
+  /// Set the transverse position and reset participant status to false.
   void set_position(double x, double y, double z);
 
-  /// Mark as a participant.
-  void set_participant();
-
-  /// Internal storage of the position.
+  /// Internal storage of the transverse position.
   double x_, y_, z_;
 
-  /// Internal storage of participant status.
-  bool participant_;
+  ///
+  double fluctuation_;
+
+  ///
+  bool partons_exist = false;
+
+  ///
+  struct Parton {
+    double x, y;
+  };
+
+  ///
+  std::vector<Parton> partons_;
+};
+
+/// \rst
+/// Encapsulates properties shared by all nucleons: transverse thickness
+/// profile, cross section, fluctuations.  Responsible for sampling
+/// nucleon-nucleon participation with given `\sigma_{NN}`.
+/// \endrst
+class NucleonCommon {
+ public:
+  /// Instantiate from the configuration.
+  explicit NucleonCommon(const VarMap& var_map);
+
+  /// The maximum impact parameter for participation.
+  double max_impact() const;
+
+  ///
+  std::array<double, 4> boundary(const NucleonData& nucleon) const;
+
+  ///
+  double thickness(const NucleonData& nucleon, double x, double y) const;
+
+  /// Randomly determine if a pair of nucleons participates.
+  bool participate(NucleonData& A, NucleonData& B) const;
+
+ private:
+  ///
+  void sample_parton_positions(NucleonData& nucleon) const;
+
+  ///
+  void set_participant(NucleonData& nucleon) const;
+
+  /// Fast exponential for calculating the thickness profile.
+  const FastExp<double> fast_exp_;
+
+  /// Maximum impact parameter for participants.
+  const double max_impact_sq_;
+
+  ///
+  const double parton_width_sq_, parton_radius_sq_;
+
+  ///
+  const int npartons_;
+
+  ///
+  const double sigma_qq_;
+
+  /// Thickness function prefactor = 1/(npartons*2*pi*w^2) XXX
+  const double prefactor_;
+
+  /// Gamma distribution for nucleon fluctuations.
+  mutable std::gamma_distribution<double> nucleon_fluctuation_dist_;
+
+  ///
+  mutable std::normal_distribution<double> parton_position_dist_;
 };
 
 // These functions are short, called very often, and account for a large
 // fraction of the total computation time, so request inlining.
 
-// Nucleon inline member functions
+// Trivial helper function.
+template <typename T>
+inline constexpr T sqr(const T& value) {
+  return value * value;
+}
 
-inline double Nucleon::x() const {
+// NucleonData inline member functions
+
+inline double NucleonData::x() const {
   return x_;
 }
 
-inline double Nucleon::y() const {
+inline double NucleonData::y() const {
   return y_;
 }
 
-inline double Nucleon::z() const {
+inline double NucleonData::z() const {
   return z_;
 }
 
-inline bool Nucleon::is_participant() const {
-  return participant_;
-}
-
-inline void Nucleon::set_position(double x, double y, double z) {
+inline void NucleonData::set_position(double x, double y, double z) {
   x_ = x;
   y_ = y;
   z_ = z;
-  participant_ = false;
+  fluctuation_ = -1.;
 }
 
-inline void Nucleon::set_participant() {
-  participant_ = true;
+inline bool NucleonData::is_participant() const {
+  return fluctuation_ > 0.;
 }
 
-// NucleonProfile inline member functions
-
-inline double NucleonProfile::radius() const {
-  return std::sqrt(trunc_radius_sqr_);
+inline bool NucleonData::partons_sampled() const {
+  return partons_exist; 
 }
 
-inline double NucleonProfile::max_impact() const {
-  return std::sqrt(max_impact_sqr_);
+// NucleonCommon inline member functions
+
+inline double NucleonCommon::max_impact() const {
+  return std::sqrt(max_impact_sq_);
 }
 
-inline void NucleonProfile::fluctuate() {
-  prefactor_ = fluct_dist_(random::engine) *
-     math::double_constants::one_div_two_pi / width_sqr_;
+inline std::array<double, 4>
+NucleonCommon::boundary(const NucleonData& nucleon) const {
+  auto parton = nucleon.partons_.begin();
+
+  // Initialize the boundary with the position of the first parton.
+  auto xmin = parton->x, xmax = parton->x;
+  auto ymin = parton->y, ymax = parton->y;
+
+  // Check the remaining partons and update the boundary accordingly.
+  // Using this instead of something from std::algorithm because it finds all
+  // four quantities {xmin, xmax, ymin, ymax} in a single pass over the partons.
+  for (std::advance(parton, 1); parton != nucleon.partons_.end(); ++parton) {
+    auto x = parton->x;
+    if (x < xmin)
+      xmin = x;
+    else if (x > xmax)
+      xmax = x;
+
+    auto y = parton->y;
+    if (y < ymin)
+      ymin = y;
+    else if (y > ymax)
+      ymax = y;
+  }
+
+  // Remember to add and subtract the parton radius.
+  auto r = std::sqrt(parton_radius_sq_);
+
+  return {xmin - r, xmax + r, ymin - r, ymax + r};
 }
 
-inline double NucleonProfile::thickness(double distance_sqr) const {
-  if (distance_sqr > trunc_radius_sqr_)
-    return 0.;
-  return prefactor_ * fast_exp_(neg_one_div_two_width_sqr_*distance_sqr);
+inline double NucleonCommon::thickness(
+    const NucleonData& nucleon, double x, double y) const {
+  auto t = 0.;
+
+  for (const auto& parton : nucleon.partons_) {
+    auto distance_sq = std::pow(x - parton.x, 2) + std::pow(y - parton.y, 2);
+    if (distance_sq < parton_radius_sq_)
+      t += fast_exp_(-.5*distance_sq/parton_width_sq_);
+  }
+
+  return nucleon.fluctuation_ * prefactor_ * t;
 }
 
-inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
+inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
   // If both nucleons are already participants, there's nothing to do.
   if (A.is_participant() && B.is_participant())
     return true;
 
-  double dx = A.x() - B.x();
-  double dy = A.y() - B.y();
-  double distance_sqr = dx*dx + dy*dy;
+  auto distance_sq = sqr(A.x() - B.x()) + sqr(A.y() - B.y());
 
   // Check if nucleons are out of range.
-  if (distance_sqr > max_impact_sqr_)
+  if (distance_sq > max_impact_sq_)
     return false;
+
+  sample_parton_positions(A);
+  sample_parton_positions(B);
+
+  auto overlap = 0.;
+  for (const auto& qA : A.partons_) {
+    for (const auto& qB : B.partons_) {
+      auto distance_sq = sqr(qA.x - qB.x) + sqr(qA.y - qB.y);
+      overlap += std::exp(-.25*distance_sq/parton_width_sq_);
+    }
+  }
 
   // The probability is
   //   P = 1 - exp(...)
@@ -190,17 +249,35 @@ inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
   //   (1 - P) > (1 - U)
   // or equivalently
   //   (1 - P) < U
-  auto one_minus_prob = std::exp(
-      -std::exp(cross_sec_param_ - .25*distance_sqr/width_sqr_));
+  auto one_minus_prob = std::exp(-sigma_qq_ * prefactor_/(2*npartons_) * overlap);
 
   // Sample one random number and decide if this pair participates.
   if (one_minus_prob < random::canonical<double>()) {
-    A.set_participant();
-    B.set_participant();
+    set_participant(A);
+    set_participant(B);
     return true;
   }
 
   return false;
+}
+
+inline void NucleonCommon::sample_parton_positions(NucleonData& nucleon) const {
+  if (nucleon.partons_sampled())
+    return;
+
+  nucleon.partons_.resize(static_cast<std::size_t>(npartons_));
+
+  for (auto&& parton : nucleon.partons_) {
+    parton.x = nucleon.x() + parton_position_dist_(random::engine);
+    parton.y = nucleon.y() + parton_position_dist_(random::engine);
+  }
+}
+
+inline void NucleonCommon::set_participant(NucleonData& nucleon) const {
+  if (nucleon.is_participant())
+    return;
+
+  nucleon.fluctuation_ = nucleon_fluctuation_dist_(random::engine);
 }
 
 }  // namespace trento
