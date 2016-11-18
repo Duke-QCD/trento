@@ -11,6 +11,8 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 
 #include <boost/math/constants/constants.hpp>
 #include <boost/math/special_functions/expint.hpp>
@@ -25,6 +27,14 @@ namespace trento {
 
 namespace {
 
+// These constants define distances in terms of the width of the nucleon profile
+// Gaussian thickness function.
+
+// Truncation radius of the thickness function.
+constexpr double radius_widths = 5.;
+
+// Maximum impact parameter for participation.
+constexpr double max_impact_widths = 6.;
 // Create ctor parameters for unit mean std::gamma_distribution.
 //   mean = alpha*beta == 1  ->  beta = 1/alpha
 // Used below in NucleonProfile ctor initializer list.
@@ -42,22 +52,18 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
 fs::path get_data_home() {
   const auto data_path = std::getenv("xdg_data_home");
   if(data_path == nullptr)
-    return fs::path{std::getenv("home")} / ".local/share";
+    return fs::path{std::getenv("HOME")} / ".local/share";
   return data_path;
 }
 
-// These constants define distances in terms of the width of the nucleon profile
-// Gaussian thickness function.
-
-// Truncation radius of the thickness function.
-constexpr double radius_widths = 5.;
-
-// Maximum impact parameter for participation.
-constexpr double max_impact_widths = 6.;
+// Test approximate cross section parameter equality
+bool almost_equal(double a, double b) {
+  return fabs(a - b) < 1e-6;
+}
 
 // Determine the effective parton-parton cross section for sampling participants.
 // TODO: derive this
-double compute_sigma_qq(const VarMap& var_map) {
+double analytic_sigma_qq(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto width = var_map["nucleon-width"].as<double>();
@@ -107,22 +113,68 @@ double compute_sigma_qq(const VarMap& var_map) {
   }
 }
 
-double monte_carlo_sigma_qq(const VarMap& var_map) {
+//double monte_carlo_sigma_qq(const VarMap& var_map) {
+//  // Read parameters from the configuration.
+//  auto sigma_nn = var_map["cross-section"].as<double>();
+//  auto nucleon_width = var_map["nucleon-width"].as<double>();
+//  auto parton_width = var_map["parton-width"].as<double>();
+//  auto nparton = var_map["parton-number"].as<int>();
+//
+//  return 1.;
+//}
+
+// Determine cross section parameter (partonic cross section), given
+// nucleon width w, parton width v, cross section x, and parton number m.
+double compute_sigma_qq(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
-  auto width = var_map["nucleon-width"].as<double>();
+  auto nucleon_width = var_map["nucleon-width"].as<double>();
+  auto parton_width = var_map["parton-width"].as<double>();
+  auto nparton = var_map["parton-number"].as<int>();
 
   // create trento cache directory
-  auto cache_path = get_data_home() / "/trento/";
-  std::cout << cache_path << std::endl;
-  fs::create_directory(cache_path);
+  auto cache_dir = get_data_home() / "trento";
+  fs::create_directory(cache_dir);
 
   // create dummy cross section file
-  //std::ofstream cache_file("cross_section.dat", std::ios_base::in | std::ios_base::app);
-  //cache_file << 6.04 << std::setw(10) <<  0.5 << std::setw(10) << 0.3 << std::setw(10) << 3 << std::endl;
-  //cache_file.close();
+  auto cache_path = cache_dir / "cross_section.dat";
+  std::fstream cache_file(cache_path.string(),
+      std::ios_base::out | std::ios_base::in | std::ios_base::app);
 
-  return 1.;
+  double sigma_nn_;
+  double nucleon_width_;
+  double parton_width_;
+  int nparton_;
+  double xsec_param;
+
+  while(!cache_file.eof()) {
+    cache_file >> nparton_ >> nucleon_width_ >>
+      parton_width_ >> sigma_nn_ >> xsec_param;
+    if (almost_equal(nucleon_width, nucleon_width_) &&
+        almost_equal(parton_width, parton_width_) &&
+        almost_equal(sigma_nn, sigma_nn_) &&
+        (nparton == nparton_)) {
+      return xsec_param;
+    }
+  }
+
+  xsec_param = analytic_sigma_qq(var_map);
+
+  using std::fixed;
+  using std::setprecision;
+  using std::setw;
+  using std::scientific;
+
+  cache_file.clear();
+  cache_file << setprecision(6) << std::left
+             << setw(8) << fixed << nparton
+             << setw(10) << fixed << nucleon_width
+             << setw(10) << fixed << parton_width 
+             << setw(10) << fixed << sigma_nn
+             << setw(14) << scientific << xsec_param
+             << std::endl;
+
+  return xsec_param;
 }
 
 // Determine the width of the normal distribution for sampling parton positions.
