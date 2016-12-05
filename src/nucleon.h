@@ -114,10 +114,10 @@ class NucleonCommon {
   const double parton_width_sq_, parton_radius_sq_;
 
   ///
-  const int npartons_;
+  const std::size_t npartons_;
 
-  ///
-  const double sigma_qq_;
+  /// nuclear opacity parameter
+  double sigma_partonic_;
 
   /// Thickness function prefactor = 1/(npartons*2*pi*w^2) XXX
   const double prefactor_;
@@ -127,6 +127,7 @@ class NucleonCommon {
 
   ///
   mutable std::normal_distribution<double> parton_position_dist_;
+
 };
 
 // These functions are short, called very often, and account for a large
@@ -249,7 +250,9 @@ inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
   //   (1 - P) > (1 - U)
   // or equivalently
   //   (1 - P) < U
-  auto one_minus_prob = std::exp(-sigma_qq_ * prefactor_/(2*npartons_) * overlap);
+  auto one_minus_prob = std::exp(
+      -sigma_partonic_ * prefactor_/(2.*npartons_) * overlap
+      );
 
   // Sample one random number and decide if this pair participates.
   if (one_minus_prob < random::canonical<double>()) {
@@ -279,6 +282,27 @@ inline void NucleonCommon::set_participant(NucleonData& nucleon) const {
 
   nucleon.fluctuation_ = nucleon_fluctuation_dist_(random::engine);
 }
+
+
+class MonteCarloCrossSection {
+ public:
+  MonteCarloCrossSection(const VarMap& var_map);
+
+  double operator() (const double sigma_partonic) const;
+
+ private:
+  std::size_t npartons;
+  double nucleon_width;
+  double parton_width;
+  double parton_sampling_width;
+  double parton_width_sq;
+  double prefactor;
+
+  const std::size_t n_max = 100000000;
+  const std::size_t cache_size = 100000;
+  const std::size_t n_loops = 10;
+  const double error_threshold = 0.001;
+};
 
 }  // namespace trento
 

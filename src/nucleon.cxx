@@ -18,6 +18,7 @@
 #include <boost/math/special_functions/expint.hpp>
 #include <boost/math/tools/roots.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <boost/math/special_functions/erf.hpp>
 #include <boost/filesystem.hpp>
 
 
@@ -47,6 +48,19 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
   return param_type<RealType>{alpha, 1./alpha};
 }
 
+float error_sample_mean(std::vector<float> v) {
+      float sum = std::accumulate(v.begin(), v.end(), 0.0);
+      float mean = sum / v.size();
+      std::vector<float> diff(v.size());
+      std::transform(
+          v.begin(), v.end(), diff.begin(),
+          [mean](float x) { return x - mean; }
+          );
+      float sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+      float stddev = std::sqrt(sq_sum / v.size()); 
+      return stddev/std::sqrt(v.size())/mean;
+}
+
 // Return appropriate path to temporary file directory.
 // Used to store cross section parameter \sigma_qq.
 fs::path get_data_home() {
@@ -63,10 +77,11 @@ bool almost_equal(double a, double b) {
 
 // Determine the effective parton-parton cross section for sampling participants.
 // TODO: derive this
-double analytic_sigma_qq(const VarMap& var_map) {
+double analytic_partonic_cross_section(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto width = var_map["nucleon-width"].as<double>();
+  std::cout << sigma_nn  << std::endl;
 
   // TODO: automatically set from beam energy
   // if (sigma_nn < 0.) {
@@ -104,7 +119,8 @@ double analytic_sigma_qq(const VarMap& var_map) {
       },
       a, b, tol, max_iter);
 
-    return .5*(result.first + result.second);
+    auto cross_section_param = .5*(result.first + result.second);
+    return std::exp(cross_section_param) * 4 * math::double_constants::pi * sqr(width);
   }
   catch (const std::domain_error&) {
     // Root finding fails for very small nucleon widths, w^2/sigma_nn < ~0.01.
@@ -113,19 +129,43 @@ double analytic_sigma_qq(const VarMap& var_map) {
   }
 }
 
-//double monte_carlo_sigma_qq(const VarMap& var_map) {
-//  // Read parameters from the configuration.
-//  auto sigma_nn = var_map["cross-section"].as<double>();
-//  auto nucleon_width = var_map["nucleon-width"].as<double>();
-//  auto parton_width = var_map["parton-width"].as<double>();
-//  auto nparton = var_map["parton-number"].as<int>();
-//
-//  return 1.;
-//}
+double numeric_partonic_cross_section(const VarMap& var_map) {
+  MonteCarloCrossSection mc_cross_section(var_map);
+
+  // Bracket min and max.
+  auto a = 1.;
+  auto b = 1000.;
+
+  // Tolerance function.
+  math::tools::eps_tolerance<double> tol{7};
+
+  // Maximum iterations.
+  boost::uintmax_t max_iter = 100;
+
+  // The right-hand side of the equation.
+  auto rhs = var_map["cross-section"].as<double>();
+
+  try {
+    auto result = math::tools::toms748_solve(
+      [&rhs, &mc_cross_section](double x) {
+        return mc_cross_section(x) - rhs;
+      },
+      a, b, tol, max_iter);
+
+    auto sigma_partonic = .5*(result.first + result.second);
+    std::cout << mc_cross_section(sigma_partonic) << std::endl;
+    return sigma_partonic;
+  }
+  catch (const std::domain_error&) {
+    // Root finding fails for very small nucleon widths, w^2/sigma_nn < ~0.01.
+    throw std::domain_error{
+      "unable to fit cross section -- nucleon width too small?"};
+  }
+}
 
 // Determine cross section parameter (partonic cross section), given
 // nucleon width w, parton width v, cross section x, and parton number m.
-double compute_sigma_qq(const VarMap& var_map) {
+double partonic_cross_section(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto nucleon_width = var_map["nucleon-width"].as<double>();
@@ -141,24 +181,29 @@ double compute_sigma_qq(const VarMap& var_map) {
   std::fstream cache_file(cache_path.string(),
       std::ios_base::out | std::ios_base::in | std::ios_base::app);
 
-  double sigma_nn_;
+  int nparton_;
   double nucleon_width_;
   double parton_width_;
-  int nparton_;
-  double xsec_param;
+  double sigma_nn_;
+  double sigma_partonic;
 
   while(!cache_file.eof()) {
     cache_file >> nparton_ >> nucleon_width_ >>
-      parton_width_ >> sigma_nn_ >> xsec_param;
+      parton_width_ >> sigma_nn_ >> sigma_partonic;
     if (almost_equal(nucleon_width, nucleon_width_) &&
         almost_equal(parton_width, parton_width_) &&
         almost_equal(sigma_nn, sigma_nn_) &&
         (nparton == nparton_)) {
-      return xsec_param;
+      return sigma_partonic;
     }
   }
 
-  xsec_param = analytic_sigma_qq(var_map);
+  if (nparton == 1) {
+    sigma_partonic = analytic_partonic_cross_section(var_map);
+  }
+  else {
+    sigma_partonic = numeric_partonic_cross_section(var_map);
+  }
 
   using std::fixed;
   using std::setprecision;
@@ -171,10 +216,10 @@ double compute_sigma_qq(const VarMap& var_map) {
              << setw(10) << fixed << nucleon_width
              << setw(10) << fixed << parton_width 
              << setw(10) << fixed << sigma_nn
-             << setw(14) << scientific << xsec_param
+             << setw(14) << scientific << sigma_partonic
              << std::endl;
 
-  return xsec_param;
+  return sigma_partonic;
 }
 
 // Determine the width of the normal distribution for sampling parton positions.
@@ -202,11 +247,88 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
       max_impact_sq_(sqr(max_impact_widths*var_map["nucleon-width"].as<double>())),
       parton_width_sq_(sqr(var_map["parton-width"].as<double>())),
       parton_radius_sq_(sqr(radius_widths)*parton_width_sq_),
-      npartons_(var_map["parton-number"].as<int>()),
-      sigma_qq_(compute_sigma_qq(var_map)),
+      npartons_(std::size_t(var_map["parton-number"].as<int>())),
+      sigma_partonic_(analytic_partonic_cross_section(var_map)),
       prefactor_(math::double_constants::one_div_two_pi/parton_width_sq_/npartons_),
       nucleon_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
-      parton_position_dist_(0, compute_parton_sampling_width(var_map))
+      parton_position_dist_(0, compute_parton_sampling_width(var_map)) {
+      
+      // compute nuclear opacity after member variables are initialized
+      sigma_partonic_ = partonic_cross_section(var_map);
+      }
+
+MonteCarloCrossSection::MonteCarloCrossSection(const VarMap& var_map)
+  : npartons(std::size_t(var_map["parton-number"].as<int>())),
+    nucleon_width(var_map["nucleon-width"].as<double>()),
+    parton_width(var_map["parton-width"].as<double>()),
+    parton_sampling_width(compute_parton_sampling_width(var_map)),
+    parton_width_sq(sqr(parton_width)),
+    prefactor(math::double_constants::one_div_two_pi/parton_width_sq/npartons)
 {}
+
+double MonteCarloCrossSection::operator() (const double sigma_partonic) const {
+
+  random::CyclicNormal<> cyclic_normal{
+    0., parton_sampling_width, cache_size, n_loops
+  };
+
+  struct Parton {
+    double x, y;
+  };
+
+  std::vector<Parton> nucleonA(npartons);
+  std::vector<Parton> nucleonB(npartons);
+
+  auto bmax = max_impact_widths * nucleon_width;
+  auto sample_max = bmax + 6*parton_sampling_width;
+  auto arg_max = 0.25*sqr(sample_max)/parton_width_sq; 
+
+  const FastExp<double> fast_exp(-arg_max, 0., 1000);
+
+  std::vector<float> arg_cache;
+  auto prob_miss = 0.;
+
+  for (std::size_t n=0; n<n_max; ++n) {
+    // Sample b from P(b)db = 2*pi*b.
+    auto b = bmax * std::sqrt(random::canonical<double>());
+
+    for (auto&& p : nucleonA) {
+      p.x = cyclic_normal(random::engine);
+      p.y = cyclic_normal(random::engine);
+    }
+
+    for (auto&& p : nucleonB) {
+      p.x = cyclic_normal(random::engine);
+      p.y = cyclic_normal(random::engine);
+    }
+
+    auto overlap = 0.;
+    for (auto&& pa : nucleonA) {
+      for (auto&& pb : nucleonB) {
+        auto distance_sq = sqr(pa.x - pb.x + b) + sqr(pa.y - pb.y);
+        auto arg = .25*distance_sq/parton_width_sq;
+        if (arg > arg_max) continue;
+        else overlap += fast_exp(-arg);
+      }
+    }
+
+    auto arg = sigma_partonic * prefactor/(2.*npartons) * overlap;
+    prob_miss += std::exp(-arg);
+    arg_cache.push_back(arg);
+
+    if (n > 0 && !(n % 1000000)) {
+      if (error_sample_mean(arg_cache) < error_threshold) {
+        auto fraction_hit = 1. - (prob_miss/n);
+        auto sample_area = math::double_constants::pi * sqr(bmax);
+        auto cross_section = fraction_hit * sample_area;
+        return cross_section;
+      }
+    }
+  }
+
+  throw std::out_of_range{
+    "Partonic cross section failed to converge -- maximum iterations exceeded."};
+  return -1.;
+}
 
 }  // namespace trento

@@ -7,10 +7,13 @@
 
 #include <limits>
 #include <random>
+#include <vector>
 
 #include <boost/math/constants/constants.hpp>
+#include <boost/math/special_functions/erf.hpp>
 
 #include "fwd_decl.h"
+#include <iostream>
 
 namespace trento { namespace random {
 
@@ -40,6 +43,58 @@ inline double phi() {
   return math::constants::two_pi<RealType>() * canonical<RealType>();
 }
 
+/// Generates and cycles through uniform samples from a normal distribution
+template <typename RealType = double>
+class CyclicNormal {
+ public:
+  CyclicNormal(
+      RealType mean = 0.0, RealType stddev = 1.0,
+      std::size_t cache_size = 1000, std::size_t n_loops = 10
+      );
+
+  const RealType& operator()() {
+    if (loop_count > n_loops_) {
+      std::shuffle(cache_.begin(), cache_.end(), random::engine); 
+      loop_count = 0;
+    }
+    if (iter_ == cache_.end()) {
+      iter_ = cache_.begin();
+      ++loop_count;
+    }
+
+    return *iter_++;
+  }
+
+  template <class Generator>
+    const RealType& operator()(Generator&) {
+      return operator()();
+    }
+
+ private:
+  std::vector<RealType> cache_;
+  std::size_t n_loops_;
+  std::size_t loop_count = 0;
+  typename std::vector<RealType>::const_iterator iter_;
+};
+
+template <typename RealType>
+CyclicNormal<RealType>::CyclicNormal(
+      RealType mean, RealType stddev,
+      std::size_t cache_size, std::size_t n_loops
+    )
+  : cache_(cache_size),
+    n_loops_(n_loops),
+    iter_(cache_.begin()) {
+
+  for (std::size_t i = 1; i < cache_size + 1; ++i) {
+    auto z = -1. + 2.*double(i)/(cache_size + 1);
+    cache_[i-1] = mean + stddev * boost::math::erf_inv(z);
+  }
+
+  std::shuffle(cache_.begin(), cache_.end(), random::engine); 
+}
+
 }}  // namespace trento::random
+
 
 #endif  // RANDOM_H
