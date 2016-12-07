@@ -81,7 +81,6 @@ double analytic_partonic_cross_section(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto width = var_map["nucleon-width"].as<double>();
-  std::cout << sigma_nn  << std::endl;
 
   // TODO: automatically set from beam energy
   // if (sigma_nn < 0.) {
@@ -131,10 +130,12 @@ double analytic_partonic_cross_section(const VarMap& var_map) {
 
 double numeric_partonic_cross_section(const VarMap& var_map) {
   MonteCarloCrossSection mc_cross_section(var_map);
+  auto sigma_nn = var_map["cross-section"].as<double>();
+  auto parton_width = var_map["parton-width"].as<double>();
 
   // Bracket min and max.
   auto a = 1.;
-  auto b = 1000.;
+  auto b = 10.;
 
   // Tolerance function.
   math::tools::eps_tolerance<double> tol{7};
@@ -142,19 +143,19 @@ double numeric_partonic_cross_section(const VarMap& var_map) {
   // Maximum iterations.
   boost::uintmax_t max_iter = 100;
 
-  // The right-hand side of the equation.
-  auto rhs = var_map["cross-section"].as<double>();
+  // This quantity appears a couple times in the equation.
+  auto c = 4 * math::double_constants::pi * sqr(parton_width);
 
   try {
     auto result = math::tools::toms748_solve(
-      [&rhs, &mc_cross_section](double x) {
-        return mc_cross_section(x) - rhs;
+      [&sigma_nn, &mc_cross_section, &c](double cross_section_param) {
+        auto x = std::exp(cross_section_param) * c;
+        return mc_cross_section(x) - sigma_nn;
       },
       a, b, tol, max_iter);
 
-    auto sigma_partonic = .5*(result.first + result.second);
-    std::cout << mc_cross_section(sigma_partonic) << std::endl;
-    return sigma_partonic;
+    auto cross_section_param = .5*(result.first + result.second);
+    return std::exp(cross_section_param) * c;
   }
   catch (const std::domain_error&) {
     // Root finding fails for very small nucleon widths, w^2/sigma_nn < ~0.01.
@@ -204,6 +205,7 @@ double partonic_cross_section(const VarMap& var_map) {
   else {
     sigma_partonic = numeric_partonic_cross_section(var_map);
   }
+  MonteCarloCrossSection mc_cross_section(var_map);
 
   using std::fixed;
   using std::setprecision;
@@ -280,8 +282,7 @@ double MonteCarloCrossSection::operator() (const double sigma_partonic) const {
   std::vector<Parton> nucleonB(npartons);
 
   auto bmax = max_impact_widths * nucleon_width;
-  auto sample_max = bmax + 6*parton_sampling_width;
-  auto arg_max = 0.25*sqr(sample_max)/parton_width_sq; 
+  auto arg_max = 0.25*sqr(bmax)/parton_width_sq; 
 
   const FastExp<double> fast_exp(-arg_max, 0., 1000);
 
@@ -307,8 +308,7 @@ double MonteCarloCrossSection::operator() (const double sigma_partonic) const {
       for (auto&& pb : nucleonB) {
         auto distance_sq = sqr(pa.x - pb.x + b) + sqr(pa.y - pb.y);
         auto arg = .25*distance_sq/parton_width_sq;
-        if (arg > arg_max) continue;
-        else overlap += fast_exp(-arg);
+        if (arg < arg_max) overlap += fast_exp(-arg);
       }
     }
 

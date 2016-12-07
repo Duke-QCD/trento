@@ -88,7 +88,8 @@ CyclicNormal<RealType>::CyclicNormal(
 
   for (std::size_t i = 1; i < cache_size + 1; ++i) {
     auto z = -1. + 2.*double(i)/(cache_size + 1);
-    cache_[i-1] = mean + stddev * boost::math::erf_inv(z);
+    auto normal = math::double_constants::root_two * boost::math::erf_inv(z);
+    cache_[i-1] = mean + stddev * normal;
   }
 
   std::shuffle(cache_.begin(), cache_.end(), random::engine); 
