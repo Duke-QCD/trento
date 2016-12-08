@@ -301,7 +301,8 @@ class MonteCarloCrossSection {
   const std::size_t n_max = 100000000;
   const std::size_t cache_size = 100000;
   const std::size_t n_loops = 10;
-  const double error_threshold = 0.001;
+  const int n_pass = 1000000;
+  const double tolerance = 0.005;
 };
 
 }  // namespace trento
