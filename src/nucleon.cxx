@@ -135,7 +135,7 @@ double numeric_partonic_cross_section(const VarMap& var_map) {
 
   // Bracket min and max.
   auto a = 1.;
-  auto b = 10.;
+  auto b = 20.;
 
   // Tolerance function.
   math::tools::eps_tolerance<double> tol{7};
