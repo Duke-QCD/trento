@@ -11,23 +11,51 @@ endif()
 find_package(Boost 1.50 REQUIRED COMPONENTS filesystem program_options system)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
-# Search for the HDF5 C++ library.  The CMake FindHDF5 package does not work
-# correctly for C++, because it will report success if it finds only the C
-# library and not C++.  It also uses the rather unfortunate 'h5c++' compiler
-# wrapper which sets a lot of unnecessary crap.
-find_library(HDF5_CXX_LIB hdf5_cpp)
-if("${HDF5_CXX_LIB}" STREQUAL "HDF5_CXX_LIB-NOTFOUND")
-  message(STATUS "HDF5 C++ library not found")
-else()
-  message(STATUS "Found HDF5 C++ library: ${HDF5_CXX_LIB}")
-  # Having found the C++ lib, also locate the header and C lib.
-  find_path(HDF5_INCLUDE_DIRS H5Cpp.h)
+# Find the HDF5 C++ library.  Prior to CMake v3.6, the standard FindHDF5 module
+# did not work correctly for C++ -- it would report success if it found only the
+# C library and not C++.  However, this version is still too recent to require,
+# so find HDF5 manually.
+
+# If available, parse the output of the h5c++ compiler wrapper for include and
+# library dirs (-I and -L flags).
+find_program(H5CXX h5c++)
+if(H5CXX)
+  execute_process(COMMAND ${H5CXX} -show OUTPUT_VARIABLE H5CXX_OUTPUT)
+  foreach(TYPE "INCLUDE" "LIBRARY")
+    string(SUBSTRING ${TYPE} 0 1 FLAG)
+    set(FLAG " -${FLAG}")
+    string(REGEX MATCH "${FLAG}[^ ]+" FLAG_HINT ${H5CXX_OUTPUT})
+    string(REPLACE "${FLAG}" "" HDF5_${TYPE}_HINT "${FLAG_HINT}")
+  endforeach()
+endif()
+
+# Find all required HDF5 components.
+find_path(HDF5_INCLUDE_DIRS H5Cpp.h HINTS ${HDF5_INCLUDE_HINT})
+find_library(HDF5_CXX_LIB hdf5_cpp HINTS ${HDF5_LIBRARY_HINT})
+find_library(HDF5_C_LIB hdf5 HINTS ${HDF5_LIBRARY_HINT})
+find_library(ZLIB z)
+
+# Group HDF5 components by whether they were found or not.
+set(HDF5_VARS_FOUND "")
+set(HDF5_VARS_MISSING "")
+set(HDF5_FOUND TRUE)
+foreach(VAR HDF5_INCLUDE_DIRS HDF5_CXX_LIB HDF5_C_LIB ZLIB)
+  if(${VAR})
+    set(HDF5_VARS_FOUND "${HDF5_VARS_FOUND} ${${VAR}}")
+  else()
+    set(HDF5_FOUND FALSE)
+    set(HDF5_VARS_MISSING "${HDF5_VARS_MISSING} ${VAR}")
+  endif()
+endforeach()
+
+# Report HDF5 status and set relevant variables if found.
+if(HDF5_FOUND)
+  set(HDF5_LIBRARIES ${HDF5_CXX_LIB} ${HDF5_C_LIB} ${ZLIB})
   include_directories(SYSTEM ${HDF5_INCLUDE_DIRS})
-  find_library(HDF5_C_LIB hdf5)
-  # Also link to zlib for HDF5 compression.
-  set(HDF5_LIBRARIES ${HDF5_CXX_LIB} ${HDF5_C_LIB} z)
-  # Set preprocessor definition so HDF5 output is compiled.
   add_definitions(-DTRENTO_HDF5)
+  message(STATUS "Found HDF5:${HDF5_VARS_FOUND}")
+else()
+  message(STATUS "HDF5 not found (missing:${HDF5_VARS_MISSING}, found:${HDF5_VARS_FOUND})")
 endif()
 
 set(PROJECT_VERSION_MAJOR 1)
