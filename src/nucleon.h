@@ -45,7 +45,9 @@ class NucleonData {
   double z() const;
 
   ///
-  double fluctuation() const;
+  double fluctuation() const {
+    return fluctuation_; 
+  };
 
  private:
   ///
@@ -279,10 +281,9 @@ inline void NucleonCommon::sample_parton_positions(NucleonData& nucleon) const {
 inline void NucleonCommon::set_participant(NucleonData& nucleon) const {
   if (nucleon.is_participant())
     return;
-
+  
   nucleon.fluctuation_ = nucleon_fluctuation_dist_(random::engine);
 }
-
 
 class MonteCarloCrossSection {
  public:

@@ -30,6 +30,8 @@ TEST_CASE( "collider" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"parton-width", 0.5},
+    {"parton-number", 1},
     {"nucleon-min-dist", 0.},
   });
 
@@ -92,6 +94,8 @@ TEST_CASE( "fixed impact parameter" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"parton-width", 0.5},
+    {"parton-number", 1},
     {"nucleon-min-dist", 0.2},
   });
 
@@ -136,6 +140,8 @@ TEST_CASE( "random seed" ) {
         {"fluctuation", 1.},
         {"cross-section", 6.4},
         {"nucleon-width", 0.5},
+        {"parton-width", 0.5},
+        {"parton-number", 1},
         {"nucleon-min-dist", 0.4},
       })};
 
