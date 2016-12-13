@@ -12,6 +12,7 @@
 #include "../src/nucleus.h"
 #include "../src/random.h"
 #include <boost/math/constants/constants.hpp>
+#include <boost/multi_array.hpp>
 
 #include <iostream>
 
@@ -150,13 +151,22 @@ TEST_CASE( "nucleon" ) {
   CHECK_THROWS_AS( NucleonCommon bad_nc{bad_var_map}, std::domain_error );
 
   // test nucleon-nucleon cross section with random partonic substructure
-  int npartons = 1 + std::floor(random::canonical<>()*10); 
+  auto npartons = std::uniform_int_distribution<>{1, 10}(random::engine);
   auto parton_width = .3 + .2*random::canonical<>();
   auto nucleon_width = parton_width * (1. + .5*random::canonical<>());
+  auto nucleon_width_sq = pow(nucleon_width, 2);
+
+  // Coarse-ish p+p grid.
+  auto grid_max = 3.;
+  auto grid_step = 0.1;
+  auto grid_nsteps = 60;
+  auto dxdy = std::pow(2*grid_max/grid_nsteps, 2);
 
   // partonic var map
   var_map = make_var_map({
-      {"fluctuation",   fluct},
+      {"grid-max", grid_max},
+      {"grid-step", grid_step},
+      {"fluctuation",   1e12},
       {"cross-section", xsec},
       {"nucleon-width", nucleon_width},
       {"parton-width", parton_width},
@@ -183,7 +193,35 @@ TEST_CASE( "nucleon" ) {
   auto mc_xsec = fraction * area;
 
   // assert a rather loose tolerance for the numerical cross section finder
-  // in practice, the precision is ~1%
-  CHECK( mc_xsec/xsec == Approx(1).epsilon(.05) );
+  CHECK( mc_xsec/xsec == Approx(1).epsilon(.02) );
+
+  // Compute TR grid the slow way -- switch the order of grid and nucleon loops.
+  boost::multi_array<double, 2> TR{boost::extents[grid_nsteps][grid_nsteps]};
+
+  for (auto i = 0; i < 1000; ++i) {
+    A.sample_nucleons(0.);
+    auto nucleon = *A.begin();
+
+    while (!nc_partonic.participate(nucleon, nucleon)) {}
+
+    for (auto iy = 0; iy < grid_nsteps; ++iy) {
+      for (auto ix = 0; ix < grid_nsteps; ++ix) {
+        auto x = (ix + .5) * 2 * grid_max/grid_nsteps - grid_max;
+        auto y = (iy + .5) * 2 * grid_max/grid_nsteps - grid_max;
+        auto dsq = x*x + y*y;
+        auto norm = math::double_constants::one_div_two_pi / nucleon_width_sq;
+        auto nucleon_thickness = norm * std::exp(-0.5*dsq/nucleon_width_sq);
+
+        TR[iy][ix] +=
+          (nucleon_thickness - nc_partonic.thickness(nucleon, x, y)) * dxdy / nev;
+      }
+    }
+  }
+
+  auto gaussian_error = std::accumulate(TR.origin(), TR.origin() + TR.num_elements(), 0.); 
+
+  CHECK( gaussian_error == Approx(0.).epsilon(.01) );
+
+
 
 }
