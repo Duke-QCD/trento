@@ -133,8 +133,8 @@ double numeric_partonic_cross_section(const VarMap& var_map) {
   auto parton_width = infer_parton_width(var_map);
 
   // Bracket min and max.
-  auto a = -5.;
-  auto b = 15.;
+  auto a = -10.;
+  auto b = 20.;
 
   // Tolerance function.
   math::tools::eps_tolerance<double> tol{8};
