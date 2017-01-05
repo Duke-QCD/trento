@@ -52,7 +52,6 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
 // Used to store cross section parameter \sigma_partonic.
 fs::path get_data_home() {
   const auto data_path = std::getenv("XDG_DATA_HOME");
-  std::cout << data_path << std::endl;
   if(data_path == nullptr)
     return fs::path{std::getenv("HOME")} / ".local/share";
   return data_path;
