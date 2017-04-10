@@ -117,11 +117,14 @@ TEST_CASE( "nucleon" ) {
   no_fluct_profile.fluctuate();
   CHECK( no_fluct_profile.thickness(0) == Approx(1/(2*M_PI*wsq)) );
 
-  // nucleon width too small
-  auto bad_var_map = make_var_map({
-      {"fluctuation",   1.},
-      {"cross-section", 5.},
-      {"nucleon-width", .1},
-  });
-  CHECK_THROWS_AS( NucleonProfile bad_profile{bad_var_map}, std::domain_error );
+  CHECK_THROWS_AS([]() {
+    // nucleon width too small
+    auto bad_var_map = make_var_map({
+        {"fluctuation",   1.},
+        {"cross-section", 5.},
+        {"nucleon-width", .1},
+    });
+    NucleonProfile bad_profile{bad_var_map};
+  }(),
+  std::domain_error);
 }
