@@ -32,8 +32,8 @@ class NucleonData {
   /// Whether or not this nucleon is a participant.
   bool is_participant() const;
 
-  ///
-  bool partons_sampled() const;
+  /// Whether or not its partons have been sampled.
+  bool partons_exist() const;
 
   /// The transverse \em x position.
   double x() const;
@@ -43,11 +43,6 @@ class NucleonData {
 
   /// The longitudinal \em z position.
   double z() const;
-
-  ///
-  double fluctuation() const {
-    return fluctuation_; 
-  };
 
  private:
   ///
@@ -62,18 +57,19 @@ class NucleonData {
   /// Internal storage of the transverse position.
   double x_, y_, z_;
 
-  ///
-  double fluctuation_;
+  /// Whether or not nucleon is a participant.
+  bool is_participant_ = false;
 
-  ///
-  bool partons_exist = false;
+  /// Whether or not nucleon's partons are sampled.
+  bool partons_exist_ = false;
 
-  ///
+  /// Parton transverse position and fluctuation prefactor.
   struct Parton {
     double x, y;
+    double fluctuation;
   };
 
-  ///
+  /// Vector of parton positions and fluctuation prefactors.
   std::vector<Parton> partons_;
 };
 
@@ -124,8 +120,8 @@ class NucleonCommon {
   /// Thickness function prefactor = 1/(npartons*2*pi*w^2) XXX
   const double prefactor_;
 
-  /// Gamma distribution for nucleon fluctuations.
-  mutable std::gamma_distribution<double> nucleon_fluctuation_dist_;
+  /// Gamma distribution for parton/nucleon fluctuations.
+  mutable std::gamma_distribution<double> participant_fluctuation_dist_;
 
   ///
   mutable std::normal_distribution<double> parton_position_dist_;
@@ -159,15 +155,16 @@ inline void NucleonData::set_position(double x, double y, double z) {
   x_ = x;
   y_ = y;
   z_ = z;
-  fluctuation_ = -1.;
+  is_participant_ = false;
+  partons_exist_ = false;
 }
 
 inline bool NucleonData::is_participant() const {
-  return fluctuation_ > 0.;
+  return is_participant_;
 }
 
-inline bool NucleonData::partons_sampled() const {
-  return partons_exist; 
+inline bool NucleonData::partons_exist() const {
+  return partons_exist_;
 }
 
 // NucleonCommon inline member functions
@@ -212,12 +209,13 @@ inline double NucleonCommon::thickness(
   auto t = 0.;
 
   for (const auto& parton : nucleon.partons_) {
-    auto distance_sq = std::pow(x - parton.x, 2) + std::pow(y - parton.y, 2);
+    auto fluct = parton.fluctuation;
+    auto distance_sq = sqr(x - parton.x) + sqr(y - parton.y);
     if (distance_sq < parton_radius_sq_)
-      t += fast_exp_(-.5*distance_sq/parton_width_sq_);
+      t += fluct * fast_exp_(-.5*distance_sq/parton_width_sq_);
   }
 
-  return nucleon.fluctuation_ * prefactor_ * t;
+  return prefactor_ * t;
 }
 
 inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
@@ -267,7 +265,7 @@ inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
 }
 
 inline void NucleonCommon::sample_parton_positions(NucleonData& nucleon) const {
-  if (nucleon.partons_sampled())
+  if (nucleon.partons_exist())
     return;
 
   nucleon.partons_.resize(static_cast<std::size_t>(npartons_));
@@ -275,14 +273,17 @@ inline void NucleonCommon::sample_parton_positions(NucleonData& nucleon) const {
   for (auto&& parton : nucleon.partons_) {
     parton.x = nucleon.x() + parton_position_dist_(random::engine);
     parton.y = nucleon.y() + parton_position_dist_(random::engine);
+    parton.fluctuation = participant_fluctuation_dist_(random::engine);
   }
+
+  nucleon.partons_exist_ = true;
 }
 
 inline void NucleonCommon::set_participant(NucleonData& nucleon) const {
   if (nucleon.is_participant())
     return;
-  
-  nucleon.fluctuation_ = nucleon_fluctuation_dist_(random::engine);
+
+  nucleon.is_participant_ = true;  
 }
 
 class MonteCarloCrossSection {

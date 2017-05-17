@@ -256,7 +256,7 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
       npartons_(std::size_t(var_map["parton-number"].as<int>())),
       sigma_partonic_(partonic_cross_section(var_map)),
       prefactor_(math::double_constants::one_div_two_pi/parton_width_sq_/npartons_),
-      nucleon_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
+      participant_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
       parton_position_dist_(0, compute_parton_sampling_width(var_map))
 {}
 

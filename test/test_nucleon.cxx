@@ -140,15 +140,18 @@ TEST_CASE( "nucleon" ) {
   while (!no_fluct_nc.participate(nucleon, nucleon)) {}
   CHECK( no_fluct_nc.thickness(nucleon, 0, 0) == Approx(1/(2*M_PI*wsq)) );
 
-  // nucleon width too small
-  auto bad_var_map = make_var_map({
-      {"fluctuation",   1.},
-      {"cross-section", 5.},
-      {"nucleon-width", .1},
-      {"parton-width", .1},
-      {"parton-number", 1}
-  });
-  CHECK_THROWS_AS( NucleonCommon bad_nc{bad_var_map}, std::domain_error );
+  CHECK_THROWS_AS([]() {
+    // nucleon width too small
+    auto bad_var_map = make_var_map({
+        {"fluctuation",   1.},
+        {"cross-section", 5.},
+        {"nucleon-width", .1},
+        {"parton-width", .1},
+        {"parton-number", 1},
+    });
+    NucleonCommon bad_profile{bad_var_map};
+  }(),
+  std::domain_error);
 
   // test nucleon-nucleon cross section with random partonic substructure
   auto npartons = std::uniform_int_distribution<>{1, 10}(random::engine);
