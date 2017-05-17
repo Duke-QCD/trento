@@ -52,7 +52,7 @@ class Collider {
   std::unique_ptr<Nucleus> nucleusA_, nucleusB_;
 
   /// The nucleon profile instance.
-  NucleonProfile nucleon_profile_;
+  NucleonCommon nucleon_common_;
 
   /// Number of events to run.
   const int nevents_;

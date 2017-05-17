@@ -11,6 +11,10 @@
 
 #include "../src/nucleus.h"
 #include "../src/random.h"
+#include <boost/math/constants/constants.hpp>
+#include <boost/multi_array.hpp>
+
+#include <iostream>
 
 using namespace trento;
 
@@ -24,35 +28,49 @@ TEST_CASE( "nucleon" ) {
       {"fluctuation",   fluct},
       {"cross-section", xsec},
       {"nucleon-width", width},
+      {"parton-width", width},
+      {"parton-number", 1}
   });
 
-  NucleonProfile profile{var_map};
-  profile.fluctuate();
+  NucleonCommon nc{var_map};
+
+  Proton proton{};
+  proton.sample_nucleons(0.);
+  auto& nucleon = *proton.begin();
+  while (!nc.participate(nucleon, nucleon)) {}
 
   // truncation radius
-  auto R = profile.radius();
-  CHECK( R == Approx(5*width) );
+  auto R = 5*width;
+
+  // random angle
+  auto phi = math::double_constants::two_pi * random::canonical<>();
+  auto cs = std::cos(phi);
+  auto sn = std::sin(phi);
 
   // thickness function
   // check relative to zero
-  auto tzero = profile.thickness(0.);
-  CHECK( profile.thickness(wsq) == Approx(tzero*std::exp(-.5)) );
+  auto tzero = nc.thickness(nucleon, 0., 0.);
+  CHECK( nc.thickness(nucleon, width*cs, width*sn) == Approx(tzero*std::exp(-.5)) );
 
   // random point inside radius
-  auto dsq = std::pow(R*random::canonical<>(), 2);
-  CHECK( profile.thickness(dsq) == Approx(tzero*std::exp(-.5*dsq/wsq)) );
+  auto x = R * random::canonical<>();
+  auto y = R * random::canonical<>();
+  auto dsq = x*x + y*y;
+  CHECK( nc.thickness(nucleon, x, y) == Approx(tzero*std::exp(-.5*dsq/wsq)) );
 
   // random point outside radius
-  dsq = std::pow(R*(1+random::canonical<>()), 2);
-  CHECK( profile.thickness(dsq) == 0. );
+  auto d = R * (1 + random::canonical<>());
+  CHECK( nc.thickness(nucleon, d*cs, d*sn) == 0. );
 
   // fluctuations
   // just check they have unit mean -- the rest is handled by the C++ impl.
   auto total = 0.;
   auto n = 1e6;
   for (auto i = 0; i < static_cast<int>(n); ++i) {
-    profile.fluctuate();
-    total += profile.thickness(0.) * (2*M_PI*wsq);
+    proton.sample_nucleons(0.);
+    nucleon = *proton.begin();
+    while (!nc.participate(nucleon, nucleon)) {}
+    total += nc.thickness(nucleon, 0., 0.) * (2*M_PI*wsq);
   }
 
   auto mean = total/n;
@@ -72,7 +90,7 @@ TEST_CASE( "nucleon" ) {
   CHECK( !nA.is_participant() );
 
   // wait until the nucleons participate
-  while (!profile.participate(nA, nB)) {}
+  while (!nc.participate(nA, nB)) {}
   CHECK( nA.is_participant() );
   CHECK( nB.is_participant() );
 
@@ -82,7 +100,7 @@ TEST_CASE( "nucleon" ) {
 
   // test cross section
   // min-bias impact params
-  auto bmax = profile.max_impact();
+  auto bmax = nc.max_impact();
   CHECK( bmax == Approx(6*width) );
 
   auto nev = 1e6;
@@ -91,7 +109,7 @@ TEST_CASE( "nucleon" ) {
     auto b = bmax * std::sqrt(random::canonical<>());
     A.sample_nucleons(.5*b);
     B.sample_nucleons(-.5*b);
-    if (profile.participate(nA, nB))
+    if (nc.participate(nA, nB))
       ++count;
   }
 
@@ -104,24 +122,109 @@ TEST_CASE( "nucleon" ) {
   auto b = bmax + random::canonical<>();
   A.sample_nucleons(.5*b);
   B.sample_nucleons(-.5*b);
-  CHECK( !profile.participate(nA, nB) );
+  CHECK( !nc.participate(nA, nB) );
 
   // very large fluctuation parameters mean no fluctuations
   auto no_fluct_var_map = make_var_map({
       {"fluctuation",   1e12},
       {"cross-section", xsec},
       {"nucleon-width", width},
+      {"parton-width", width},
+      {"parton-number", 1}
   });
 
-  NucleonProfile no_fluct_profile{no_fluct_var_map};
-  no_fluct_profile.fluctuate();
-  CHECK( no_fluct_profile.thickness(0) == Approx(1/(2*M_PI*wsq)) );
+  NucleonCommon no_fluct_nc{no_fluct_var_map};
 
-  // nucleon width too small
-  auto bad_var_map = make_var_map({
-      {"fluctuation",   1.},
-      {"cross-section", 5.},
-      {"nucleon-width", .1},
+  proton.sample_nucleons(0.);
+  nucleon = *proton.begin();
+  while (!no_fluct_nc.participate(nucleon, nucleon)) {}
+  CHECK( no_fluct_nc.thickness(nucleon, 0, 0) == Approx(1/(2*M_PI*wsq)) );
+
+  CHECK_THROWS_AS([]() {
+    // nucleon width too small
+    auto bad_var_map = make_var_map({
+        {"fluctuation",   1.},
+        {"cross-section", 5.},
+        {"nucleon-width", .1},
+        {"parton-width", .1},
+        {"parton-number", 1},
+    });
+    NucleonCommon bad_profile{bad_var_map};
+  }(),
+  std::domain_error);
+
+  // test nucleon-nucleon cross section with random partonic substructure
+  auto npartons = std::uniform_int_distribution<>{1, 10}(random::engine);
+  auto parton_width = .3 + .2*random::canonical<>();
+  auto nucleon_width = parton_width * (1. + .5*random::canonical<>());
+  auto nucleon_width_sq = pow(nucleon_width, 2);
+
+  // Coarse-ish p+p grid.
+  auto grid_max = 3.;
+  auto grid_step = 0.1;
+  auto grid_nsteps = 60;
+  auto dxdy = std::pow(2*grid_max/grid_nsteps, 2);
+
+  // partonic var map
+  var_map = make_var_map({
+      {"grid-max", grid_max},
+      {"grid-step", grid_step},
+      {"fluctuation",   1e12},
+      {"cross-section", xsec},
+      {"nucleon-width", nucleon_width},
+      {"parton-width", parton_width},
+      {"parton-number", npartons}
   });
-  CHECK_THROWS_AS( NucleonProfile bad_profile{bad_var_map}, std::domain_error );
+
+  NucleonCommon nc_partonic{var_map};
+
+  // inelastic collision counter
+  auto ncoll = 0;
+
+  // measure the cross section with min bias p+p collisions
+  for (auto i = 0; i < static_cast<int>(nev); ++i) {
+    b = bmax * std::sqrt(random::canonical<>());
+    A.sample_nucleons(.5*b);
+    B.sample_nucleons(-.5*b);
+    if (nc_partonic.participate(*A.begin(), *B.begin()))
+      ++ncoll;
+  }
+
+  // calculate Monte Carlo cross section
+  auto fraction = double(ncoll)/nev;
+  auto area = math::double_constants::pi * bmax * bmax;
+  auto mc_xsec = fraction * area;
+
+  // assert a rather loose tolerance for the numerical cross section finder
+  CHECK( mc_xsec/xsec == Approx(1).epsilon(.02) );
+
+  // Compute TR grid the slow way -- switch the order of grid and nucleon loops.
+  boost::multi_array<double, 2> TR{boost::extents[grid_nsteps][grid_nsteps]};
+
+  for (auto i = 0; i < 1000; ++i) {
+    A.sample_nucleons(0.);
+    auto nucleon = *A.begin();
+
+    while (!nc_partonic.participate(nucleon, nucleon)) {}
+
+    for (auto iy = 0; iy < grid_nsteps; ++iy) {
+      for (auto ix = 0; ix < grid_nsteps; ++ix) {
+        auto x = (ix + .5) * 2 * grid_max/grid_nsteps - grid_max;
+        auto y = (iy + .5) * 2 * grid_max/grid_nsteps - grid_max;
+        auto dsq = x*x + y*y;
+        auto norm = math::double_constants::one_div_two_pi / nucleon_width_sq;
+        auto nucleon_thickness = norm * std::exp(-0.5*dsq/nucleon_width_sq);
+
+        TR[iy][ix] +=
+          (nucleon_thickness - nc_partonic.thickness(nucleon, x, y)) * dxdy / nev;
+      }
+    }
+  }
+
+  auto gaussian_error = std::accumulate(TR.origin(), TR.origin() + TR.num_elements(), 0.); 
+
+  CHECK( gaussian_error == Approx(0.).epsilon(.01) );
+
+
+
 }

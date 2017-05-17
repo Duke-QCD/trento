@@ -24,12 +24,14 @@ TEST_CASE( "output" ) {
     {"grid-step", 0.3},
     {"fluctuation", 1.},
     {"cross-section", 6.4},
-    {"nucleon-width", 0.5}
+    {"nucleon-width", 0.5},
+    {"parton-width", 0.5},
+    {"parton-number", 1}
   });
 
   // create a test event
   Event event{var_map};
-  NucleonProfile profile{var_map};
+  NucleonCommon profile{var_map};
 
   auto nucleusA = Nucleus::create("Pb");
   auto nucleusB = Nucleus::create("Pb");

@@ -30,6 +30,8 @@ TEST_CASE( "collider" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"parton-width", 0.5},
+    {"parton-number", 1},
     {"nucleon-min-dist", 0.},
   });
 
@@ -92,6 +94,8 @@ TEST_CASE( "fixed impact parameter" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"parton-width", 0.5},
+    {"parton-number", 1},
     {"nucleon-min-dist", 0.2},
   });
 
@@ -119,13 +123,15 @@ TEST_CASE( "fixed impact parameter" ) {
 TEST_CASE( "random seed" ) {
   std::vector<std::string> output(5);
 
+const auto seed = static_cast<int64_t>(std::random_device{}());
+
   // run several collider batches with the same seed
   std::generate(output.begin(), output.end(),
-    []() {
+      [&seed]() {
       Collider collider{make_var_map({
         {"number-events", 3},
         {"quiet", false},
-        {"random-seed", static_cast<int64_t>(2308470)},
+        {"random-seed", seed},
         {"projectile", std::vector<std::string>{"p", "U"}},
         {"b-min", 0.},
         {"b-max", -1.},
@@ -136,6 +142,8 @@ TEST_CASE( "random seed" ) {
         {"fluctuation", 1.},
         {"cross-section", 6.4},
         {"nucleon-width", 0.5},
+        {"parton-width", 0.5},
+        {"parton-number", 1},
         {"nucleon-min-dist", 0.4},
       })};
 

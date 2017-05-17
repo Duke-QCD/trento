@@ -84,8 +84,8 @@ void Nucleus::sample_nucleons(double offset) {
 }
 
 void Nucleus::set_nucleon_position(
-    iterator nucleon, double x, double y, double z) {
-  nucleon->set_position(x + offset_, y, z);
+    NucleonData& nucleon, double x, double y, double z) {
+  nucleon.set_position(x + offset_, y, z);
 }
 
 Proton::Proton() : Nucleus(1) {}
@@ -97,7 +97,7 @@ double Proton::radius() const {
 
 /// Always place the nucleon at the origin.
 void Proton::sample_nucleons_impl() {
-  set_nucleon_position(begin(), 0., 0., 0.);
+  set_nucleon_position(*begin(), 0., 0., 0.);
 }
 
 // Without loss of generality, let the internal a_ parameter be the minimum of
@@ -146,9 +146,9 @@ void Deuteron::sample_nucleons_impl() {
   auto z = r * cos_theta;
 
   // Place the first nucleon at the sampled coordinates.
-  set_nucleon_position(begin(), x, y, z);
+  set_nucleon_position(*begin(), x, y, z);
   // Place the second nucleon opposite to the first.
-  set_nucleon_position(std::next(begin()), -x, -y, -z);
+  set_nucleon_position(*std::next(begin()), -x, -y, -z);
 }
 
 MinDistNucleus::MinDistNucleus(std::size_t A, double dmin)
@@ -222,7 +222,7 @@ void WoodsSaxonNucleus::sample_nucleons_impl() {
       auto y = r_sin_theta * std::sin(phi);
       auto z = r * cos_theta;
 
-      set_nucleon_position(nucleon, x, y, z);
+      set_nucleon_position(*nucleon, x, y, z);
 
       // Retry sampling a reasonable number of times.  If a nucleon cannot be
       // placed, give up and leave it at its last sampled position.  Some
@@ -352,7 +352,7 @@ void DeformedWoodsSaxonNucleus::sample_nucleons_impl() {
       auto y_rot = x*sin_b + y*cos_a*cos_b - z*sin_a*cos_b;
       auto z_rot =           y*sin_a       + z*cos_a;
 
-      set_nucleon_position(nucleon, x_rot, y_rot, z_rot);
+      set_nucleon_position(*nucleon, x_rot, y_rot, z_rot);
 
       // In addition to resampling phi, flip the z-coordinate each time.  This
       // works because the deformed WS dist is symmetric in z.  Effectively
@@ -513,7 +513,7 @@ void ManualNucleus::sample_nucleons_impl() {
     auto y_rot = x*(c1*s3 + c2*c3*s1) - y*(s1*s3 - c1*c2*c3) - z*c3*s2;
     auto z_rot = x*s1*s2              + y*c1*s2              + z*c2;
 
-    set_nucleon_position(nucleon, x_rot, y_rot, z_rot);
+    set_nucleon_position(*nucleon, x_rot, y_rot, z_rot);
   }
 }
 

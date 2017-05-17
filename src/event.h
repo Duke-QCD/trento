@@ -18,7 +18,7 @@
 
 namespace trento {
 
-class NucleonProfile;
+class NucleonCommon;
 
 /// \rst
 /// The primary computation class, responsible for constructing nuclear
@@ -52,7 +52,7 @@ class Event {
   /// function.
   /// \endrst
   void compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
-               NucleonProfile& profile);
+               const NucleonCommon& nucleon_common);
 
   /// Alias for a 2-dimensional grid
   using Grid = boost::multi_array<double, 2>;
@@ -93,7 +93,7 @@ class Event {
   /// nucleus and nucleon profile.  This destroys any data previously contained
   /// by the grid.
   void compute_nuclear_thickness(
-      const Nucleus& nucleus, NucleonProfile& profile, Grid& TX);
+      const Nucleus& nucleus, const NucleonCommon& nucleon_common, Grid& TX);
 
   /// Compute the reduced thickness function (TR) after computing TA and TB.
   /// Template parameter GenMean sets the actual function that returns TR(TA, TB).
