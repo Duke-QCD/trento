@@ -213,13 +213,20 @@ double partonic_cross_section(const VarMap& var_map) {
   using std::scientific;
 
   cache_file.clear();
+  cache_file.seekg(0, std::ios::end);
+
+  if (cache_file.tellg() != 0) {
+    cache_file << std::endl;
+  }
+
+  cache_file.clear();
+
   cache_file << setprecision(6) << std::left
              << setw(8) << fixed << nparton
              << setw(10) << fixed << nucleon_width
              << setw(10) << fixed << parton_width 
              << setw(10) << fixed << sigma_nn
-             << setw(14) << scientific << sigma_partonic
-             << std::endl;
+             << setw(14) << scientific << sigma_partonic;
 
   return sigma_partonic;
 }
