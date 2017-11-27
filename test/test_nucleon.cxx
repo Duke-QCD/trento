@@ -40,7 +40,7 @@ TEST_CASE( "nucleon" ) {
 
   // random point inside radius
   auto dsq = std::pow(R*random::canonical<>(), 2);
-  CHECK( profile.thickness(dsq) == Approx(tzero*std::exp(-.5*dsq/wsq)) );
+  CHECK( profile.thickness(dsq) == Approx(tzero*std::exp(-.5*dsq/wsq)).epsilon(1e-5).margin(1e-5) );
 
   // random point outside radius
   dsq = std::pow(R*(1+random::canonical<>()), 2);
@@ -56,7 +56,7 @@ TEST_CASE( "nucleon" ) {
   }
 
   auto mean = total/n;
-  CHECK( mean == Approx(1.).epsilon(.002) );
+  CHECK( mean == Approx(1.).epsilon(.003) );
 
   // must use a Nucleus to set Nucleon position
   // Proton conveniently sets a deterministic position

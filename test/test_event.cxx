@@ -156,7 +156,7 @@ TEST_CASE( "event" ) {
         }
       }
       auto ecc = std::sqrt(real*real + imag*imag) / weight;
-      CHECK( ecc == Approx(event.eccentricity().at(n)) );
+      CHECK( ecc == Approx(event.eccentricity().at(n)).epsilon(1e-6).margin(1e-6) );
     }
   }
 

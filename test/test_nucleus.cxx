@@ -85,7 +85,7 @@ TEST_CASE( "lead nucleus" ) {
   x /= A;
   y /= A;
   z /= A;
-  auto tolerance = .6;
+  auto tolerance = .7;
   CHECK( std::abs(x - offset) < tolerance );
   CHECK( std::abs(y) < tolerance );
   CHECK( std::abs(z) < tolerance );
@@ -217,7 +217,7 @@ TEST_CASE( "woods-saxon sampling" ) {
   // does this.
 
   // sample a bunch of nuclei and bin all the nucleon positions
-  auto nevents = 1000;
+  auto nevents = 5000;
   auto nsamples = nevents * A;
   std::map<int, int> hist{};
   for (auto i = 0; i < nevents; ++i) {
@@ -258,7 +258,7 @@ TEST_CASE( "woods-saxon sampling" ) {
     auto rmax = rmin + 1;
     auto prob = static_cast<double>(bin.second) / nsamples;
     auto correct_prob = integrate_woods_saxon(rmin, rmax) / ws_norm;
-    bool within_tol = prob == Approx(correct_prob).epsilon(.1);
+    bool within_tol = prob == Approx(correct_prob).epsilon(.1).margin(1e-4);
     if (!within_tol)
       all_bins_correct = false;
     bin_output << std::setw(4) << rmin << ' '
