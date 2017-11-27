@@ -106,7 +106,7 @@ TEST_CASE( "copper nucleus" ) {
   CHECK( dynamic_cast<WoodsSaxonNucleus*>(nucleus.get()) != nullptr );
   CHECK( dynamic_cast<DeformedWoodsSaxonNucleus*>(def_nucleus.get()) != nullptr );
 
-  constexpr int A = 62;
+  constexpr int A = 63;
   CHECK( std::distance(nucleus->begin(), nucleus->end()) == A );
   CHECK( std::distance(def_nucleus->cbegin(), def_nucleus->cend()) == A );
 
