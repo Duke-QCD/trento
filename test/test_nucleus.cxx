@@ -225,7 +225,7 @@ TEST_CASE( "woods-saxon sampling" ) {
     for (const auto& nucleon : *nucleus) {
       auto x = nucleon.x();
       auto y = nucleon.y();
-      auto z = nucleon.y();
+      auto z = nucleon.z();
       auto r = std::sqrt(x*x + y*y + z*z);
       ++hist[static_cast<int>(r)];
     }
