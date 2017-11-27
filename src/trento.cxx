@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
       std::cout
         << usage_str
         << "\n"
-           "projectile = { p | d | Cu | Cu2 | Au | Au2 | Pb | U | U2 | U3 }\n"
+           "projectile = { p | d | Cu | Cu2 | Xe | Au | Au2 | Pb | U | U2 | U3 }\n"
         << usage_opts
         << "\n"
            "see the online documentation for complete usage information\n";
