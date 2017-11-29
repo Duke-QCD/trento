@@ -244,13 +244,14 @@ double compute_parton_sampling_width(const VarMap& var_map) {
   // nucleon profile.  The convolution of two Gaussians is a third Gaussian
   // with the variances simply added together.
   auto sampling_width_sq = sqr(nucleon_width) - sqr(parton_width);
+  auto TINY = 1e-8;
 
-  if (sampling_width_sq < 0.) {
+  if (sampling_width_sq < -TINY) {
     throw std::out_of_range{
       "the parton width cannot be larger than the nucleon width"};
   }
 
-  return std::sqrt(sampling_width_sq);
+  return std::sqrt(std::max(sampling_width_sq, 0.));
 }
 
 }  // unnamed namespace
