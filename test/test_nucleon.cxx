@@ -226,5 +226,4 @@ TEST_CASE( "nucleon" ) {
   CHECK( gaussian_error == Approx(0.).epsilon(.01) );
 
 
-
 }
