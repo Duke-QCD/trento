@@ -174,7 +174,6 @@ double partonic_cross_section(const VarMap& var_map) {
 
   // Create trento cache directory
   auto cache_dir = get_data_home() / "trento";
-  std::cout << "cache_dir " << cache_dir << std::endl;
   fs::create_directory(cache_dir);
 
   // Create dummy cross section file
