@@ -89,7 +89,7 @@ with one line for each event, where
 This format is designed for easy parsing, redirection to files, etc.
 The output may be disabled with the ``-q/--quiet`` option.
 
-Optionally, enabling ``-b/--ncoll`` will calculate the binary collision number ``ncoll`` for each event, and add it to the list of event-by-event properties sent to stdout::
+Optionally, enabling ``--ncoll`` will calculate the binary collision number ``ncoll`` for each event, and add it to the list of event-by-event properties sent to stdout::
 
    event_number impact_param npart ncoll mult e2 e3 e4 e5
 
