@@ -57,6 +57,9 @@ class Collider {
   /// Number of events to run.
   const int nevents_;
 
+  /// Calculate binary collisions if true
+  const bool calc_ncoll_;
+
   /// Minimum and maximum impact parameter.
   const double bmin_, bmax_;
 

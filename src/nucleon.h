@@ -68,6 +68,9 @@ class NucleonProfile {
 
   /// Thickness function prefactor = fluct/(2*pi*w^2)
   double prefactor_;
+
+  /// Tracks binary collisions if true
+  bool calc_ncoll_;
 };
 
 /// \rst
@@ -111,7 +114,7 @@ class Nucleon {
   double x_, y_, z_;
 
   /// Internal storage of participant status.
-  bool participant_;
+  bool participant_ = false;
 };
 
 // These functions are short, called very often, and account for a large
@@ -169,7 +172,7 @@ inline double NucleonProfile::thickness(double distance_sqr) const {
 
 inline bool NucleonProfile::participate(Nucleon& A, Nucleon& B) const {
   // If both nucleons are already participants, there's nothing to do.
-  if (A.is_participant() && B.is_participant())
+  if (A.is_participant() && B.is_participant() && !calc_ncoll_)
     return true;
 
   double dx = A.x() - B.x();

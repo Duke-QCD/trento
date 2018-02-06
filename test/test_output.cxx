@@ -18,6 +18,7 @@ using namespace trento;
 
 TEST_CASE( "output" ) {
   auto var_map = make_var_map({
+    {"ncoll", false},
     {"normalization", 1.},
     {"reduced-thickness", 0.},
     {"grid-max", 9.},
@@ -47,7 +48,7 @@ TEST_CASE( "output" ) {
   SECTION( "no output" ) {
     capture_stdout capture;
     Output output{make_var_map({{"quiet", true}, {"number-events", 1}})};
-    output(1, b, event);
+    output(1, b, 0, event);
     CHECK( capture.stream.str().empty() );  // stdout should be empty
   }
 
@@ -56,7 +57,7 @@ TEST_CASE( "output" ) {
     auto first_line = [&b, &event](int nev) {
       capture_stdout capture;
       Output output{make_var_map({{"quiet", false}, {"number-events", nev}})};
-      output(0, b, event);
+      output(0, b, 0, event);
       std::string line;
       std::getline(capture.stream, line);
       return line;
@@ -80,7 +81,7 @@ TEST_CASE( "output" ) {
     {
       capture_stdout capture;
       Output output{make_var_map({{"quiet", false}, {"number-events", 1}})};
-      output(0, b, event);
+      output(0, b, 0, event);
       capture.stream >> num >> impact >> npart >> mult >> e2 >> e3 >> e4 >> e5 >> std::ws;
       end = capture.stream.get();
     }
@@ -116,8 +117,8 @@ TEST_CASE( "output" ) {
     {
       // output two events and verify two lines were printed to stdout
       capture_stdout capture;
-      output(3, b, event);
-      output(27, b, event);
+      output(3, b, 0, event);
+      output(27, b, 0, event);
       int n = 0;
       std::string line;
       while (std::getline(capture.stream, line)) { ++n; }
@@ -196,7 +197,7 @@ TEST_CASE( "output" ) {
     Output output{output_var_map};
 
     for (auto n = 0; n < nev; ++n)
-      output(n, b, event);
+      output(n, b, 0, event);
 
     {
       H5::H5File file{temp.path.string(), H5F_ACC_RDONLY};
@@ -262,7 +263,7 @@ TEST_CASE( "output" ) {
         {"number-events", 1},
         {"output", temp2.path}
       })
-    }(0, b, event);
+    }(0, b, 0, event);
 
     CHECK( fs::file_size(temp2.path) > 0);
   }

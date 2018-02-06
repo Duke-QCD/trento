@@ -33,6 +33,7 @@ TEST_CASE( "event" ) {
     auto grid_nsteps = 60;
 
     auto var_map = make_var_map({
+        {"ncoll", false},
         {"normalization", norm},
         {"reduced-thickness", p},
         {"grid-max", grid_max},

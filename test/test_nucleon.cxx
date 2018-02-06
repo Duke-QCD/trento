@@ -21,6 +21,7 @@ TEST_CASE( "nucleon" ) {
   auto wsq = width*width;
 
   auto var_map = make_var_map({
+      {"ncoll", false},
       {"fluctuation",   fluct},
       {"cross-section", xsec},
       {"nucleon-width", width},
@@ -108,6 +109,7 @@ TEST_CASE( "nucleon" ) {
 
   // very large fluctuation parameters mean no fluctuations
   auto no_fluct_var_map = make_var_map({
+      {"ncoll", false},
       {"fluctuation",   1e12},
       {"cross-section", xsec},
       {"nucleon-width", width},
@@ -120,6 +122,7 @@ TEST_CASE( "nucleon" ) {
   CHECK_THROWS_AS([]() {
     // nucleon width too small
     auto bad_var_map = make_var_map({
+        {"ncoll", false},
         {"fluctuation",   1.},
         {"cross-section", 5.},
         {"nucleon-width", .1},

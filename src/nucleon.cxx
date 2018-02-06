@@ -104,7 +104,8 @@ NucleonProfile::NucleonProfile(const VarMap& var_map)
       cross_sec_param_(compute_cross_sec_param(var_map)),
       fast_exp_(-.5*sqr(trunc_radius_widths), 0., 1000),
       fluct_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
-      prefactor_(math::double_constants::one_div_two_pi/width_sqr_)
+      prefactor_(math::double_constants::one_div_two_pi/width_sqr_),
+      calc_ncoll_(var_map["ncoll"].as<bool>())
 {}
 
 }  // namespace trento
