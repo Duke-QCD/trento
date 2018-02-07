@@ -81,30 +81,9 @@ void Collider::run_events() {
   for (int n = 0; n < nevents_; ++n) {
     // Sampling the impact parameter also implicitly prepares the nuclei for
     // event computation, i.e. by sampling nucleon positions and participants.
-    double b;
-    int ncoll;
-    bool collision = false;
-
-    do {
-      // Sample b from P(b)db = 2*pi*b.
-      b = bmin_ + (bmax_ - bmin_) * std::sqrt(random::canonical<double>());
-
-      // Initialize binary collision counter
-      ncoll = 0;
-
-      // Offset each nucleus depending on the asymmetry parameter (see header).
-      nucleusA_->sample_nucleons(asymmetry_ * b);
-      nucleusB_->sample_nucleons((asymmetry_ - 1.) * b);
-
-      // Check each nucleon-nucleon pair.
-      for (auto&& A : *nucleusA_) {
-        for (auto&& B : *nucleusB_) {
-          auto new_collision = nucleon_profile_.participate(A, B);
-          if (new_collision && calc_ncoll_) ncoll++;
-          collision = new_collision || collision;
-        }
-      }
-    } while (!collision);
+    auto impact_param = sample_impact_param();
+    double b = std::get<0>(impact_param);
+    int ncoll = std::get<1>(impact_param);
 
     // Pass the prepared nuclei to the Event.  It computes the entropy profile
     // (thickness grid) and other event observables.
@@ -113,6 +92,36 @@ void Collider::run_events() {
     // Write event data.
     output_(n, b, ncoll, event_);
   }
+}
+
+std::tuple<double, int> Collider::sample_impact_param() {
+  // Sample impact parameters until at least one nucleon-nucleon pair
+  // participates.  The bool 'collision' keeps track -- it is effectively a
+  // logical OR over all possible participant pairs.
+  // Ncoll tracks the number of binary collisions.
+  double b;
+  int ncoll = 0;
+  bool collision = false;
+
+  do {
+    // Sample b from P(b)db = 2*pi*b.
+    b = bmin_ + (bmax_ - bmin_) * std::sqrt(random::canonical<double>());
+
+    // Offset each nucleus depending on the asymmetry parameter (see header).
+    nucleusA_->sample_nucleons(asymmetry_ * b);
+    nucleusB_->sample_nucleons((asymmetry_ - 1.) * b);
+
+    // Check each nucleon-nucleon pair.
+    for (auto&& A : *nucleusA_) {
+      for (auto&& B : *nucleusB_) {
+        auto new_collision = nucleon_profile_.participate(A, B);
+        if (new_collision && calc_ncoll_) ++ncoll;
+        collision = new_collision || collision;
+      }
+    }
+  } while (!collision);
+
+  return std::make_tuple(b, ncoll);
 }
 
 }  // namespace trento
