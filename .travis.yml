@@ -27,6 +27,9 @@ install:
 script:
   - mkdir build
   - cd build
+  - echo "leak:H5FL_reg_malloc" >> hdf5_leaks.supp
+  - echo "leak:H5TS_cancel_count_inc" >> hdf5_leaks.supp
+  - LSAN_OPTIONS=suppressions=hdf5_leaks.supp
   - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
   - make trento test-trento
   - ./test/test-trento --success
