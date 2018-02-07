@@ -17,7 +17,7 @@ addons:
       - libboost1.55-dev
       - libboost-filesystem1.55-dev
       - libboost-program-options1.55-dev
-      - libhdf5-dev
+      - libhdf5-serial-dev
 
 env:
   - BUILD_TYPE='Release'
