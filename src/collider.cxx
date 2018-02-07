@@ -13,8 +13,6 @@
 #include "fwd_decl.h"
 #include "nucleus.h"
 
-#include <iostream>
-
 namespace trento {
 
 namespace {

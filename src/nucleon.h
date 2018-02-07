@@ -70,7 +70,7 @@ class NucleonProfile {
   double prefactor_;
 
   /// Tracks binary collisions if true
-  bool calc_ncoll_;
+  const bool calc_ncoll_;
 };
 
 /// \rst
@@ -114,7 +114,7 @@ class Nucleon {
   double x_, y_, z_;
 
   /// Internal storage of participant status.
-  bool participant_ = false;
+  bool participant_;
 };
 
 // These functions are short, called very often, and account for a large
