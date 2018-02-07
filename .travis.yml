@@ -12,7 +12,7 @@ addons:
     packages:
       - cmake3
       - g++-7
-      - clang-3.8
+      - clang-5.0
       - libboost1.55-dev
       - libboost-filesystem1.55-dev
       - libboost-program-options1.55-dev
@@ -24,7 +24,7 @@ env:
 
 
 install:
-  - if [ "$CXX" = 'g++' ]; then export CXX='g++-7'; else export CXX='clang++-3.8'; fi
+  - if [ "$CXX" = 'g++' ]; then export CXX='g++-7'; else export CXX='clang++-5.0'; fi
 
 script:
   - mkdir build
