@@ -14,9 +14,9 @@ addons:
       - cmake3
       - g++-7
       - clang-4.0
-      - libboost1.64-dev
-      - libboost-filesystem1.64-dev
-      - libboost-program-options1.64-dev
+      - libboost1.55-dev
+      - libboost-filesystem1.55-dev
+      - libboost-program-options1.55-dev
       - libhdf5-dev
 
 env:
