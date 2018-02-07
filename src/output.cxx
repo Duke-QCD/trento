@@ -152,8 +152,7 @@ void HDF5Writer::operator()(int num, double impact_param,
   hdf5_add_scalar_attr(dataset, "npart", event.npart());
 
   // Write ncoll if calculated
-  //if (ncoll > 0) hdf5_add_scalar_attr(dataset, "ncoll", ncoll);
-  hdf5_add_scalar_attr(dataset, "ncoll", ncoll);
+  if (ncoll > 0) hdf5_add_scalar_attr(dataset, "ncoll", ncoll);
 
   hdf5_add_scalar_attr(dataset, "mult", event.multiplicity());
   for (const auto& ecc : event.eccentricity())
