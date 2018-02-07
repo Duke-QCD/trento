@@ -8,10 +8,12 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-4.0
+
     packages:
       - cmake3
       - g++-7
-      - clang-4.0.1
+      - clang-4.0
       - libboost1.64-dev
       - libboost-filesystem1.64-dev
       - libboost-program-options1.64-dev
@@ -21,8 +23,9 @@ env:
   - BUILD_TYPE='Release'
   - BUILD_TYPE='Debug'
 
+
 install:
-  - if [ "$CXX" = 'g++' ]; then export CXX='g++-7'; else export CXX='clang++-4.0.1'; fi
+  - if [ "$CXX" = 'g++' ]; then export CXX='g++-7'; else export CXX='clang++-4.0'; fi
 
 script:
   - mkdir build
