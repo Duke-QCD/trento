@@ -81,9 +81,9 @@ void Collider::run_events() {
   for (int n = 0; n < nevents_; ++n) {
     // Sampling the impact parameter also implicitly prepares the nuclei for
     // event computation, i.e. by sampling nucleon positions and participants.
-    auto impact_param = sample_impact_param();
-    double b = std::get<0>(impact_param);
-    int ncoll = std::get<1>(impact_param);
+    auto collision_attr = sample_collision();
+    double b = std::get<0>(collision_attr);
+    int ncoll = std::get<1>(collision_attr);
 
     // Pass the prepared nuclei to the Event.  It computes the entropy profile
     // (thickness grid) and other event observables.
@@ -94,11 +94,11 @@ void Collider::run_events() {
   }
 }
 
-std::tuple<double, int> Collider::sample_impact_param() {
+std::tuple<double, int> Collider::sample_collision() {
   // Sample impact parameters until at least one nucleon-nucleon pair
   // participates.  The bool 'collision' keeps track -- it is effectively a
   // logical OR over all possible participant pairs.
-  // Ncoll tracks the number of binary collisions.
+  // Returns the sampled impact parameter b, and binary collision number ncoll.
   double b;
   int ncoll = 0;
   bool collision = false;
