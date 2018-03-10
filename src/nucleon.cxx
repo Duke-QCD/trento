@@ -172,32 +172,42 @@ double partonic_cross_section(const VarMap& var_map) {
   auto sigma_nn = var_map["cross-section"].as<double>();
   auto nparton = var_map["parton-number"].as<int>();
 
-  // Create trento cache directory
-  auto cache_dir = get_data_home() / "trento";
-  fs::create_directory(cache_dir);
-
-  // Create dummy cross section file
-  auto cache_path = cache_dir / "cross_section.dat";
-  std::fstream cache_file(cache_path.string(),
-      std::ios_base::out | std::ios_base::in | std::ios_base::app);
-
+  // Cross section parameters
   int nparton_;
   double nucleon_width_;
   double parton_width_;
   double sigma_nn_;
   double sigma_partonic;
 
-  // Check parameter configuration cache
-  while(!cache_file.eof()) {
-    cache_file >> nparton_ >> nucleon_width_ >>
-      parton_width_ >> sigma_nn_ >> sigma_partonic;
-    if (almost_equal(nucleon_width, nucleon_width_) &&
-        almost_equal(parton_width, parton_width_) &&
-        almost_equal(sigma_nn, sigma_nn_) &&
-        (nparton == nparton_)) {
-      return sigma_partonic;
+  // Establish trento cache path
+  auto cache_dir = get_data_home() / "trento";
+  auto cache_path = cache_dir / "cross_section.dat";
+  fs::create_directory(cache_dir);
+
+  // Check if cache exists
+  if (fs::exists(cache_path.string())){
+
+    // Open cache read only
+    std::fstream cache_read(cache_path.string(), std::ios_base::in);
+
+    // Check cache for previously tabulated cross section parameters
+    while(!cache_read.eof()) {
+      cache_read >> nparton_ >> nucleon_width_ >>
+        parton_width_ >> sigma_nn_ >> sigma_partonic;
+      if (almost_equal(nucleon_width, nucleon_width_) &&
+          almost_equal(parton_width, parton_width_) &&
+          almost_equal(sigma_nn, sigma_nn_) &&
+          (nparton == nparton_)) {
+        return sigma_partonic;
+      }
     }
+
+    // Close read-only file stream
+    cache_read.close();
   }
+
+  // Open cache with write access
+  std::fstream cache_write(cache_path.string(), std::ios_base::app);
 
   // Use a semi-analytic method to determine sigma_partonic
   // if there is no subnucleonic structure---otherwise use MC method.
@@ -211,22 +221,15 @@ double partonic_cross_section(const VarMap& var_map) {
   using std::setprecision;
   using std::setw;
   using std::scientific;
+  using std::endl;
 
-  cache_file.clear();
-  cache_file.seekg(0, std::ios::end);
-
-  if (cache_file.tellg() != 0) {
-    cache_file << std::endl;
-  }
-
-  cache_file.clear();
-
-  cache_file << setprecision(6) << std::left
-             << setw(8) << fixed << nparton
-             << setw(10) << fixed << nucleon_width
-             << setw(10) << fixed << parton_width 
-             << setw(10) << fixed << sigma_nn
-             << setw(14) << scientific << sigma_partonic;
+  cache_write << setprecision(6) << std::left
+              << setw(8) << fixed << nparton
+              << setw(10) << fixed << nucleon_width
+              << setw(10) << fixed << parton_width 
+              << setw(10) << fixed << sigma_nn
+              << setw(14) << scientific << sigma_partonic
+              << endl;
 
   return sigma_partonic;
 }
