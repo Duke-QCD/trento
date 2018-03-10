@@ -207,7 +207,8 @@ double partonic_cross_section(const VarMap& var_map) {
   }
 
   // Open cache with write access
-  std::fstream cache_write(cache_path.string(), std::ios_base::app);
+  std::fstream cache_write(cache_path.string(),
+      std::ios_base::out | std::ios_base::app);
 
   // Use a semi-analytic method to determine sigma_partonic
   // if there is no subnucleonic structure---otherwise use MC method.
