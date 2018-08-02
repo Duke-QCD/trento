@@ -1,10 +1,13 @@
-T\ :sub:`R`\ ENTo
+T\ :sub:`R`\ ENTo with nucleon substructure
 =================
 *Reduced Thickness Event-by-event Nuclear Topology*
 
-Initial condition model for high-energy nuclear collisions.
+This is a forked development version of `trento <https://github.com/Duke-QCD/trento>`_, an initial condition model for high-energy nuclear collisions. It includes two new parameters to vary the size and shape of the nucleon:
 
-Read the docs at `qcd.phy.duke.edu/trento <http://qcd.phy.duke.edu/trento>`_.
+1. a constituent number parameter `-m [ --constituent-number ] INT (=1)`, and
+2. a constituent width parameter `-v [ --constituent-width ] FLOAT (=off)`.
+
+Read the original trento docs at `qcd.phy.duke.edu/trento <http://qcd.phy.duke.edu/trento>`_.
 
 .. figure:: doc/_static/event.png
    :alt: Pb+Pb event
