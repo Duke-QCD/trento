@@ -113,12 +113,15 @@ int main(int argc, char* argv[]) {
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
-    ("constituent-width,v",
+    ("constit-width,v",
      po::value<double>()->value_name("FLOAT")->default_value(-1, "off"),
      "Gaussian constituent width [fm]")
-    ("constituent-number,m",
+    ("constit-number,m",
      po::value<int>()->value_name("INT")->default_value(1, "1"),
      "Number of constituents in the nucleon")
+    ("constit-position-radius,r",
+     po::value<double>()->value_name("FLOAT")->default_value(-1, "off"),
+     "Gaussian constituent position radius [fm], overrides nucleon-width")
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
@@ -181,7 +184,7 @@ int main(int argc, char* argv[]) {
       std::cout
         << usage_str
         << "\n"
-           "projectile = { p | d | Cu | Cu2 | Au | Au2 | Pb | U | U2 | U3 }\n"
+           "projectile = { p | d | Cu | Cu2 | Xe | Au | Au2 | Pb | U | U2 | U3 }\n"
         << usage_opts
         << "\n"
            "see the online documentation for complete usage information\n";

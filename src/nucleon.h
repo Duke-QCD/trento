@@ -112,12 +112,12 @@ class NucleonCommon {
   const double constituent_width_sq_, constituent_radius_sq_;
 
   ///
-  const std::size_t nconstituents_;
+  const std::size_t constituent_number_;
 
   /// nuclear opacity parameter
   double sigma_partonic_;
 
-  /// Thickness function prefactor = 1/(nconstituents*2*pi*w^2) XXX
+  /// Thickness function prefactor = 1/(constituent_number*2*pi*w^2) XXX
   const double prefactor_;
 
   /// Gamma distribution for constituent/nucleon fluctuations.
@@ -251,7 +251,7 @@ inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
   // or equivalently
   //   (1 - P) < U
   auto one_minus_prob = std::exp(
-      -sigma_partonic_ * prefactor_/(2.*nconstituents_) * overlap
+      -sigma_partonic_ * prefactor_/(2.*constituent_number_) * overlap
       );
 
   // Sample one random number and decide if this pair participates.
@@ -268,7 +268,7 @@ inline void NucleonCommon::sample_constituent_positions(NucleonData& nucleon) co
   if (nucleon.constituents_exist())
     return;
 
-  nucleon.constituents_.resize(static_cast<std::size_t>(nconstituents_));
+  nucleon.constituents_.resize(static_cast<std::size_t>(constituent_number_));
 
   for (auto&& constituent : nucleon.constituents_) {
     constituent.x = nucleon.x() + constituent_position_dist_(random::engine);
@@ -293,10 +293,10 @@ class MonteCarloCrossSection {
   double operator() (const double sigma_partonic) const;
 
  private:
-  std::size_t nconstituents;
+  std::size_t constituent_number;
   double nucleon_width;
   double constituent_width;
-  double constituent_sampling_width;
+  double constituent_position_radius;
   double constituent_width_sq;
   double prefactor;
 

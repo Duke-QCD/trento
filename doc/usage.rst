@@ -21,8 +21,9 @@ Symbol     Name      No. nucleons  Deformed
 =========  ========  ============  ========
 p          proton    1             ---
 d          deuteron  2             ---
-Cu         copper    62            no
-Cu2        copper    62            yes
+Cu         copper    63            no
+Cu2        copper    63            yes
+Xe         xenon     129           no
 Au         gold      197           no
 Au2        gold      197           yes
 Pb         lead      208           no

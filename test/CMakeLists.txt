@@ -14,7 +14,7 @@ file(WRITE ${SCRIPT_FILE}
 "message(STATUS \"Downloading Catch test header\")
 
 file(DOWNLOAD
-  \"https://raw.github.com/philsquared/Catch/master/single_include/catch.hpp\"
+  \"https://github.com/catchorg/Catch2/releases/download/v2.4.0/catch.hpp\"
   \"${CATCH_FILE}\"
   TIMEOUT 20
   STATUS status

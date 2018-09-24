@@ -25,8 +25,9 @@ TEST_CASE( "output" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
-    {"parton-width", 0.5},
-    {"parton-number", 1}
+    {"constit-width", 0.5},
+    {"constit-number", 1},
+    {"constit-position-radius", 0.0}
   });
 
   // create a test event

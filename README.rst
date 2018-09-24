@@ -2,10 +2,18 @@ T\ :sub:`R`\ ENTo with nucleon substructure
 =================
 *Reduced Thickness Event-by-event Nuclear Topology*
 
-This is a forked development version of `trento <https://github.com/Duke-QCD/trento>`_, an initial condition model for high-energy nuclear collisions. It includes two new parameters to vary the size and shape of the nucleon:
+This is a forked development version of `trento <https://github.com/Duke-QCD/trento>`_, an initial condition model for high-energy nuclear collisions. It includes three new parameters to vary nucleon substructure:
 
-1. a constituent number parameter `-m [ --constituent-number ] INT (=1)`, and
-2. a constituent width parameter `-v [ --constituent-width ] FLOAT (=off)`.
+1. Constituent number parameter `-m [ --constit-number ] INT (=1)`.
+   This controls the number of Gaussian 'blobs' inside the nucleon.
+
+2. Constituent width parameter `-v [ --constit-width ] FLOAT (=off)`.
+   Gaussian width (size) of each constituent.
+
+3. Constituent position radius parameter `-r [ --constit-position-radius ] FLOAT (=off)`.
+   Gaussian width of the radial distribution used to sample constituent positions.
+
+*Note: the constit-position-radius parameter overrides the nucleon-width parameter.*
 
 Read the original trento docs at `qcd.phy.duke.edu/trento <http://qcd.phy.duke.edu/trento>`_.
 

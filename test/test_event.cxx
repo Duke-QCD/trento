@@ -40,8 +40,9 @@ TEST_CASE( "event" ) {
         {"fluctuation",   fluct},
         {"cross-section", xsec},
         {"nucleon-width", width},
-        {"parton-width", width},
-        {"parton-number", 1},
+        {"constit-width", width},
+        {"constit-number", 1},
+        {"constit-position-radius", 0.0},
     });
 
     Event event{var_map};
@@ -158,7 +159,7 @@ TEST_CASE( "event" ) {
         }
       }
       auto ecc = std::sqrt(real*real + imag*imag) / weight;
-      CHECK( ecc == Approx(event.eccentricity().at(n)) );
+      CHECK( ecc == Approx(event.eccentricity().at(n)).epsilon(1e-6).margin(1e-6) );
     }
   }
 
