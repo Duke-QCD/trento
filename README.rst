@@ -6,6 +6,7 @@ This is a forked development version of `trento <https://github.com/Duke-QCD/tre
 
 1. Constituent number parameter `-m [ --constit-number ] INT (=1)`.
    This controls the number of Gaussian 'blobs' inside the nucleon.
+   Defaults to one constituent, i.e. no substructure.
 
 2. Constituent width parameter `-v [ --constit-width ] FLOAT (=off)`.
    Gaussian width (size) of each constituent.
