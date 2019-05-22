@@ -157,7 +157,7 @@ double numeric_partonic_cross_section(const VarMap& var_map) {
     auto result = math::tools::toms748_solve(
       [&sigma_nn, &mc_cross_section, &c](double cross_section_param) {
         auto x = std::exp(cross_section_param) * c;
-        return (mc_cross_section(x) - sigma_nn)/sigma_nn;
+        return mc_cross_section(x) - sigma_nn;
       },
       a, b, tol, max_iter);
 
@@ -316,8 +316,7 @@ double MonteCarloCrossSection::operator() (const double sigma_partonic) const {
     auto prob_hit = 1. - (prob_miss/n);
     auto cross_section = M_PI*max_impact_sq_*prob_hit;
 
-    auto update_difference =
-      std::abs((cross_section - ref_cross_section)/cross_section);
+    auto update_difference = std::abs(cross_section - ref_cross_section);
 
     if (update_difference < tolerance) {
       ++pass_tolerance;
