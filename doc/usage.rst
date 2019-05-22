@@ -89,6 +89,13 @@ with one line for each event, where
 This format is designed for easy parsing, redirection to files, etc.
 The output may be disabled with the ``-q/--quiet`` option.
 
+Optionally, enabling ``--ncoll`` will also calculate the binary collision number ``ncoll`` for each event, and add it to the list of event-by-event properties sent to stdout::
+
+   event_number impact_param npart ncoll mult e2 e3 e4 e5
+
+It also adds the ``ncoll`` attribute to both text and hdf5 output files.
+It's worth noting that the code will run noticeably faster with ``--ncoll`` disabled, as it can skip checking pairwise collisions between nucleons which have already been struck.
+
 By default, the actual initial entropy profiles (grids) are not output.
 There are two available output formats: text and HDF5 (if compiled).
 

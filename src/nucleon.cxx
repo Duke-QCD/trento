@@ -256,6 +256,7 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
       constituent_radius_sq_(sqr(max_radius_widths*constituent_width_)),
       sigma_partonic_(partonic_cross_section(var_map)),
       prefactor_(math::double_constants::one_div_two_pi/constituent_width_sq_/constituent_number_),
+      calc_ncoll_(var_map["ncoll"].as<bool>()),
       participant_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
       constituent_position_dist_(0, sampling_width_)
 {}

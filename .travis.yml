@@ -8,6 +8,7 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+
     packages:
       - cmake3
       - g++-7
@@ -21,12 +22,16 @@ env:
   - BUILD_TYPE='Release'
   - BUILD_TYPE='Debug'
 
+
 install:
   - if [ "$CXX" = 'g++' ]; then export CXX='g++-7'; else export CXX='clang++-3.8'; fi
 
 script:
   - mkdir build
   - cd build
+  - echo "leak:H5FL_reg_malloc" >> hdf5_leaks.supp
+  - echo "leak:H5TS_cancel_count_inc" >> hdf5_leaks.supp
+  - export LSAN_OPTIONS=suppressions=hdf5_leaks.supp
   - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
   - make trento test-trento
   - ./test/test-trento --success

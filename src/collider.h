@@ -45,8 +45,8 @@ class Collider {
  private:
   // Most of these are pretty self-explanatory...
 
-  /// Sample a min-bias impact parameter within the set range.
-  double sample_impact_param();
+  /// Sample a min-bias impact parameter within the set range. 
+  std::tuple<double, int> sample_collision();
 
   /// Pair of nucleus projectiles.
   std::unique_ptr<Nucleus> nucleusA_, nucleusB_;
@@ -56,6 +56,9 @@ class Collider {
 
   /// Number of events to run.
   const int nevents_;
+
+  /// Calculate binary collisions if true
+  const bool calc_ncoll_;
 
   /// Minimum and maximum impact parameter.
   const double bmin_, bmax_;

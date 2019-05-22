@@ -19,6 +19,7 @@ TEST_CASE( "collider" ) {
   auto var_map = make_var_map({
     {"number-events", N},
     {"quiet", false},
+    {"ncoll", false},
     {"random-seed", static_cast<int64_t>(-1)},
     {"projectile", std::vector<std::string>{"Pb", "Pb"}},
     {"b-min", 0.},
@@ -83,6 +84,7 @@ TEST_CASE( "fixed impact parameter" ) {
   auto var_map = make_var_map({
     {"number-events", N},
     {"quiet", false},
+    {"ncoll", false},
     {"random-seed", static_cast<int64_t>(-1)},
     {"projectile", std::vector<std::string>{"Au", "Au"}},
     {"b-min", bfixed},
@@ -131,6 +133,7 @@ const auto seed = static_cast<int64_t>(std::random_device{}());
       Collider collider{make_var_map({
         {"number-events", 3},
         {"quiet", false},
+        {"ncoll", false},
         {"random-seed", seed},
         {"projectile", std::vector<std::string>{"p", "U"}},
         {"b-min", 0.},
@@ -156,4 +159,56 @@ const auto seed = static_cast<int64_t>(std::random_device{}());
   // all collider batches are identical
   CHECK( std::all_of(output.cbegin(), output.cend(),
     [&output](const std::string& s) { return s == output.front(); }) );
+}
+
+TEST_CASE( "binary collisions" ) {
+  constexpr auto N = 20;
+
+  auto var_map = make_var_map({
+    {"number-events", N},
+    {"quiet", false},
+    {"ncoll", true},
+    {"random-seed", static_cast<int64_t>(-1)},
+    {"projectile", std::vector<std::string>{"p", "p"}},
+    {"b-min", 0.},
+    {"b-max", -1.},
+    {"normalization", 1.},
+    {"reduced-thickness", 0.},
+    {"grid-max", 3.},
+    {"grid-step", 0.2},
+    {"fluctuation", 1.},
+    {"cross-section", 6.4},
+    {"nucleon-width", 0.5},
+    {"constit-width", 0.5},
+    {"constit-number", 1},
+    {"nucleon-min-dist", 0.},
+  });
+
+  std::vector<int> nevent, npart, ncoll;
+  std::vector<double> impact, mult;
+
+  // run collider normally and save output
+  {
+    capture_stdout capture;
+
+    Collider collider{var_map};
+    collider.run_events();
+
+    std::string line;
+    while (std::getline(capture.stream, line)) {
+      nevent.push_back(0);
+      impact.push_back(0);
+      npart.push_back(0);
+      ncoll.push_back(0);
+      std::istringstream(line) >> nevent.back()
+                               >> impact.back()
+                               >> npart.back()
+                               >> ncoll.back();
+    }
+  }
+
+  // verify two participants and one binary collision
+  CHECK( npart == std::vector<int>(N, 2) );
+  CHECK( ncoll == std::vector<int>(N, 1) );
+
 }

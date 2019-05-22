@@ -63,6 +63,7 @@ Collider::Collider(const VarMap& var_map)
       nucleusB_(create_nucleus(var_map, 1)),
       nucleon_common_(var_map),
       nevents_(var_map["number-events"].as<int>()),
+      calc_ncoll_(var_map["ncoll"].as<bool>()),
       bmin_(var_map["b-min"].as<double>()),
       bmax_(determine_bmax(var_map, *nucleusA_, *nucleusB_, nucleon_common_)),
       asymmetry_(determine_asym(*nucleusA_, *nucleusB_)),
@@ -83,22 +84,26 @@ void Collider::run_events() {
   for (int n = 0; n < nevents_; ++n) {
     // Sampling the impact parameter also implicitly prepares the nuclei for
     // event computation, i.e. by sampling nucleon positions and participants.
-    double b = sample_impact_param();
+    auto collision_attr = sample_collision();
+    double b = std::get<0>(collision_attr);
+    int ncoll = std::get<1>(collision_attr);
 
     // Pass the prepared nuclei to the Event.  It computes the entropy profile
     // (thickness grid) and other event observables.
     event_.compute(*nucleusA_, *nucleusB_, nucleon_common_);
 
     // Write event data.
-    output_(n, b, event_);
+    output_(n, b, ncoll, event_);
   }
 }
 
-double Collider::sample_impact_param() {
+std::tuple<double, int> Collider::sample_collision() {
   // Sample impact parameters until at least one nucleon-nucleon pair
   // participates.  The bool 'collision' keeps track -- it is effectively a
   // logical OR over all possible participant pairs.
+  // Returns the sampled impact parameter b, and binary collision number ncoll.
   double b;
+  int ncoll = 0;
   bool collision = false;
 
   do {
@@ -112,12 +117,14 @@ double Collider::sample_impact_param() {
     // Check each nucleon-nucleon pair.
     for (auto&& A : *nucleusA_) {
       for (auto&& B : *nucleusB_) {
-        collision = nucleon_common_.participate(A, B) || collision;
+        auto new_collision = nucleon_common_.participate(A, B);
+        if (new_collision && calc_ncoll_) ++ncoll;
+        collision = new_collision || collision;
       }
     }
   } while (!collision);
 
-  return b;
+  return std::make_tuple(b, ncoll);
 }
 
 }  // namespace trento

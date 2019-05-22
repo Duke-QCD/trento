@@ -26,6 +26,7 @@ class Output {
   ///
   /// - ``int`` event number
   /// - ``double`` impact parameter
+  /// - ``int`` binary collisions
   /// - ``const Event&`` Event object
   ///
   /// \endrst
@@ -34,7 +35,7 @@ class Output {
 
  private:
   /// Internal storage of output functions.
-  std::vector<std::function<void(int, double, const Event&)>> writers_;
+  std::vector<std::function<void(int, double, int, const Event&)>> writers_;
 };
 
 template <typename... Args>

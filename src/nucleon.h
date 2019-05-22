@@ -132,6 +132,9 @@ class NucleonCommon {
   /// Thickness function prefactor = 1/(constituent_number*2*pi*w^2) XXX
   const double prefactor_;
 
+  /// Tracks binary collisions if true
+  const bool calc_ncoll_;
+
   /// Gamma random variables used to weight each nucleon (or constituent)
   /// contribution. Controlled by the fluctuation parameter.
   mutable std::gamma_distribution<double> participant_fluctuation_dist_;
@@ -233,7 +236,7 @@ inline double NucleonCommon::thickness(
 
 inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
   // If both nucleons are already participants, there's nothing to do.
-  if (A.is_participant() && B.is_participant())
+  if (A.is_participant() && B.is_participant() && !calc_ncoll_)
     return true;
 
   auto distance_sq = sqr(A.x() - B.x()) + sqr(A.y() - B.y());

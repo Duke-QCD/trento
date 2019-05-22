@@ -22,8 +22,8 @@ namespace {
 
 // These output functions are invoked by the Output class.
 
-void write_stream(std::ostream& os, int width,
-    int num, double impact_param, const Event& event) {
+void write_stream(std::ostream& os, int width, int num, double impact_param,
+    int ncoll, const Event& event) {
   using std::fixed;
   using std::setprecision;
   using std::setw;
@@ -33,8 +33,12 @@ void write_stream(std::ostream& os, int width,
   os << setprecision(10)
      << setw(width)            << num
      << setw(15) << fixed      << impact_param
-     << setw(5)                << event.npart()
-     << setw(18) << scientific << event.multiplicity()
+     << setw(5)                << event.npart();
+
+  // Output ncoll if calculated
+  if (ncoll > 0) os << setw(6) << ncoll;
+
+  os << setw(18) << scientific << event.multiplicity()
      << fixed;
 
   for (const auto& ecc : event.eccentricity())
@@ -43,8 +47,8 @@ void write_stream(std::ostream& os, int width,
   os << '\n';
 }
 
-void write_text_file(const fs::path& output_dir, int width,
-    int num, double impact_param, const Event& event, bool header) {
+void write_text_file(const fs::path& output_dir, int width, int num,
+    double impact_param, int ncoll, const Event& event, bool header) {
   // Open a numbered file in the output directory.
   // Pad the filename with zeros.
   std::ostringstream padded_fname{};
@@ -56,8 +60,12 @@ void write_text_file(const fs::path& output_dir, int width,
     ofs << std::setprecision(10)
         << "# event "   << num                  << '\n'
         << "# b     = " << impact_param         << '\n'
-        << "# npart = " << event.npart()        << '\n'
-        << "# mult  = " << event.multiplicity() << '\n';
+        << "# npart = " << event.npart()        << '\n';
+
+    // Output ncoll if calculated
+    if (ncoll > 0) ofs << "# ncoll = " << ncoll << '\n';
+
+    ofs << "# mult  = " << event.multiplicity() << '\n';
 
     for (const auto& ecc : event.eccentricity())
       ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
@@ -88,7 +96,8 @@ class HDF5Writer {
   HDF5Writer(const fs::path& filename);
 
   /// Write an event.
-  void operator()(int num, double impact_param, const Event& event) const;
+  void operator()(int num, double impact_param,
+      int ncoll, const Event& event) const;
 
  private:
   /// Internal storage of the file object.
@@ -108,8 +117,8 @@ HDF5Writer::HDF5Writer(const fs::path& filename)
     : file_(filename.string(), H5F_ACC_TRUNC)
 {}
 
-void HDF5Writer::operator()(
-    int num, double impact_param, const Event& event) const {
+void HDF5Writer::operator()(int num, double impact_param,
+    int ncoll, const Event& event) const {
   // Prepare arguments for new HDF5 dataset.
 
   // The dataset name is a prefix plus the event number.
@@ -141,6 +150,10 @@ void HDF5Writer::operator()(
   // Write event attributes.
   hdf5_add_scalar_attr(dataset, "b", impact_param);
   hdf5_add_scalar_attr(dataset, "npart", event.npart());
+
+  // Write ncoll if calculated
+  if (ncoll > 0) hdf5_add_scalar_attr(dataset, "ncoll", ncoll);
+
   hdf5_add_scalar_attr(dataset, "mult", event.multiplicity());
   for (const auto& ecc : event.eccentricity())
     hdf5_add_scalar_attr(dataset, "e" + std::to_string(ecc.first), ecc.second);
@@ -160,8 +173,8 @@ Output::Output(const VarMap& var_map) {
   // Write to stdout unless the quiet option was specified.
   if (!var_map["quiet"].as<bool>()) {
     writers_.emplace_back(
-      [width](int num, double impact_param, const Event& event) {
-        write_stream(std::cout, width, num, impact_param, event);
+      [width](int num, double impact_param, int ncoll, const Event& event) {
+        write_stream(std::cout, width, num, impact_param, ncoll, event);
       }
     );
   }
@@ -193,9 +206,10 @@ Output::Output(const VarMap& var_map) {
       }
       auto header = !var_map["no-header"].as<bool>();
       writers_.emplace_back(
-        [output_path, width, header](
-            int num, double impact_param, const Event& event) {
-          write_text_file(output_path, width, num, impact_param, event, header);
+        [output_path, width, header](int num, double impact_param,
+          int ncoll, const Event& event) {
+          write_text_file(output_path, width, num,
+              impact_param, ncoll, event, header);
         }
       );
     }
