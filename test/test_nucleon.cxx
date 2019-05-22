@@ -30,7 +30,6 @@ TEST_CASE( "nucleon" ) {
       {"nucleon-width", width},
       {"constit-width", width},
       {"constit-number", 1},
-      {"constit-position-radius", 0.0}
   });
 
   NucleonCommon nc{var_map};
@@ -132,7 +131,6 @@ TEST_CASE( "nucleon" ) {
       {"nucleon-width", width},
       {"constit-width", width},
       {"constit-number", 1},
-      {"constit-position-radius", 0.0}
   });
 
   NucleonCommon no_fluct_nc{no_fluct_var_map};
@@ -150,23 +148,20 @@ TEST_CASE( "nucleon" ) {
         {"nucleon-width", .1},
         {"constit-width", .1},
         {"constit-number", 1},
-        {"constit-position-radius", 0.0}
     });
     NucleonCommon bad_profile{bad_var_map};
   }(),
   std::domain_error);
 
   // test nucleon-nucleon cross section with random constituent substructure
-  auto constituent_number = std::uniform_int_distribution<>{1, 10}(random::engine);
-  auto constituent_width = .3 + .2*random::canonical<>();
-  auto constituent_position_radius = .5*random::canonical<>();
-  auto envelope_width_sq = sqr(constituent_position_radius) + sqr(constituent_width);
+  auto nucleon_width = 0.5;
+  auto constituent_width = .3;
+  auto constituent_number = 3;
 
   // Coarse-ish p+p grid.
   auto grid_max = 3.;
   auto grid_step = 0.1;
   auto grid_nsteps = 60;
-  auto dxdy = std::pow(2*grid_max/grid_nsteps, 2);
 
   // constituent var map
   var_map = make_var_map({
@@ -174,16 +169,16 @@ TEST_CASE( "nucleon" ) {
       {"grid-step", grid_step},
       {"fluctuation",   1e12},
       {"cross-section", xsec},
-      {"nucleon-width", 0.5},
+      {"nucleon-width", nucleon_width},
       {"constit-width", constituent_width},
       {"constit-number", constituent_number},
-      {"constit-position-radius", constituent_position_radius}
   });
 
   NucleonCommon nc_constituent{var_map};
 
   // inelastic collision counter
   auto ncoll = 0;
+  nev = 1e8;
 
   // measure the cross section with min bias p+p collisions
   for (auto i = 0; i < static_cast<int>(nev); ++i) {
@@ -202,8 +197,9 @@ TEST_CASE( "nucleon" ) {
   // assert a rather loose tolerance for the numerical cross section finder
   CHECK( mc_xsec/xsec == Approx(1).epsilon(.02) );
 
-  // Compute TR grid the slow way -- switch the order of grid and nucleon loops.
-  boost::multi_array<double, 2> TR{boost::extents[grid_nsteps][grid_nsteps]};
+  // verify root-mean-square nucleon width for nucleons with substructure
+  double mean_square_width_num = 0.0;
+  double mean_square_width_denom = 0.0;
 
   for (auto i = 0; i < 1000; ++i) {
     A.sample_nucleons(0.);
@@ -215,19 +211,15 @@ TEST_CASE( "nucleon" ) {
       for (auto ix = 0; ix < grid_nsteps; ++ix) {
         auto x = (ix + .5) * 2 * grid_max/grid_nsteps - grid_max;
         auto y = (iy + .5) * 2 * grid_max/grid_nsteps - grid_max;
-        auto dsq = x*x + y*y;
-        auto norm = math::double_constants::one_div_two_pi / envelope_width_sq;
-        auto nucleon_thickness = norm * std::exp(-0.5*dsq/envelope_width_sq);
-
-        TR[iy][ix] +=
-          (nucleon_thickness - nc_constituent.thickness(nucleon, x, y)) * dxdy / nev;
+        auto thick = nc_constituent.thickness(nucleon, x, y);
+        mean_square_width_num += (x*x + y*y)*thick;
+        mean_square_width_denom += 2*thick;
       }
     }
   }
 
-  auto gaussian_error = std::accumulate(TR.origin(), TR.origin() + TR.num_elements(), 0.);
+  auto rms_width = std::sqrt(mean_square_width_num / mean_square_width_denom);
 
-  CHECK( gaussian_error == Approx(0.).epsilon(.01).margin(.01) );
-
+  CHECK( rms_width == Approx(nucleon_width).epsilon(.01).margin(.01) );
 
 }

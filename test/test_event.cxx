@@ -42,7 +42,6 @@ TEST_CASE( "event" ) {
         {"nucleon-width", width},
         {"constit-width", width},
         {"constit-number", 1},
-        {"constit-position-radius", 0.0},
     });
 
     Event event{var_map};

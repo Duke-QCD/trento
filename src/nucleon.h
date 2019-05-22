@@ -86,44 +86,54 @@ class NucleonCommon {
   /// The maximum impact parameter for participation.
   double max_impact() const;
 
-  ///
+  /// Corners of the tile enclosing the nucleon thickness.
   std::array<double, 4> boundary(const NucleonData& nucleon) const;
 
-  ///
+  /// Nucleon thickness as a function of transverse position.
   double thickness(const NucleonData& nucleon, double x, double y) const;
 
   /// Randomly determine if a pair of nucleons participates.
   bool participate(NucleonData& A, NucleonData& B) const;
 
  private:
-  ///
+  /// Sample constituent positions inside the nucleon.
   void sample_constituent_positions(NucleonData& nucleon) const;
 
-  ///
+  /// Flag the nucleon as a participant.
   void set_participant(NucleonData& nucleon) const;
 
   /// Fast exponential for calculating the thickness profile.
   const FastExp<double> fast_exp_;
 
-  /// Maximum impact parameter for participants.
-  const double max_impact_sq_;
+  /// Gaussian constituent width.
+  const double constituent_width_;
 
-  ///
-  const double constituent_width_sq_, constituent_radius_sq_;
-
-  ///
+  /// Number of constituents inside the nucleon.
   const std::size_t constituent_number_;
 
-  /// nuclear opacity parameter
+  /// Gaussian width of constituent position sampling distribution.
+  const double sampling_width_;
+
+  /// Maximum impact parameter for nucleon-nucleon participation.
+  const double max_impact_sq_;
+
+  /// Constituent width squared.
+  const double constituent_width_sq_;
+
+  /// Calculate thickness out to this distance from constituent center.
+  const double constituent_radius_sq_;
+
+  /// Nuclear opacity parameter
   double sigma_partonic_;
 
   /// Thickness function prefactor = 1/(constituent_number*2*pi*w^2) XXX
   const double prefactor_;
 
-  /// Gamma distribution for constituent/nucleon fluctuations.
+  /// Gamma random variables used to weight each nucleon (or constituent)
+  /// contribution. Controlled by the fluctuation parameter.
   mutable std::gamma_distribution<double> participant_fluctuation_dist_;
 
-  ///
+  /// Gaussian distribution for sampling constituent positions.
   mutable std::normal_distribution<double> constituent_position_dist_;
 
 };
@@ -270,10 +280,29 @@ inline void NucleonCommon::sample_constituent_positions(NucleonData& nucleon) co
 
   nucleon.constituents_.resize(static_cast<std::size_t>(constituent_number_));
 
+  double xcom = 0.0;
+  double ycom = 0.0;
+
+  // Sample nucleon constituent positions
   for (auto&& constituent : nucleon.constituents_) {
-    constituent.x = nucleon.x() + constituent_position_dist_(random::engine);
-    constituent.y = nucleon.y() + constituent_position_dist_(random::engine);
+    auto xloc = constituent_position_dist_(random::engine);
+    auto yloc = constituent_position_dist_(random::engine);
+
+    constituent.x = xloc;
+    constituent.y = yloc;
     constituent.fluctuation = participant_fluctuation_dist_(random::engine);
+
+    xcom += xloc;
+    ycom += yloc;
+  }
+
+  xcom /= constituent_number_;
+  ycom /= constituent_number_;
+
+  // Place nucleon at the desired position
+  for (auto&& constituent : nucleon.constituents_) {
+    constituent.x += (nucleon.x() - xcom);
+    constituent.y += (nucleon.y() - ycom);
   }
 
   nucleon.constituents_exist_ = true;
@@ -293,18 +322,17 @@ class MonteCarloCrossSection {
   double operator() (const double sigma_partonic) const;
 
  private:
-  std::size_t constituent_number;
-  double nucleon_width;
-  double constituent_width;
-  double constituent_position_radius;
-  double constituent_width_sq;
-  double prefactor;
+  std::size_t constituent_number_;
+  double constituent_width_;
+  double sampling_width_;
+  double constituent_width_sq_;
+  double prefactor_;
 
-  const std::size_t n_max = 100000000;
+  const std::size_t n_max = 1000000;
   const std::size_t cache_size = 100000;
   const std::size_t n_loops = 10;
-  const int n_pass = 1000000;
-  const double tolerance = 0.005;
+  const int n_pass = 10000;
+  const double tolerance = 0.001;
 };
 
 }  // namespace trento

@@ -27,7 +27,6 @@ TEST_CASE( "output" ) {
     {"nucleon-width", 0.5},
     {"constit-width", 0.5},
     {"constit-number", 1},
-    {"constit-position-radius", 0.0}
   });
 
   // create a test event

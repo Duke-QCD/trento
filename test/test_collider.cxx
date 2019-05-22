@@ -32,7 +32,6 @@ TEST_CASE( "collider" ) {
     {"nucleon-width", 0.5},
     {"constit-width", 0.5},
     {"constit-number", 1},
-    {"constit-position-radius", 0.0},
     {"nucleon-min-dist", 0.},
   });
 
@@ -97,7 +96,6 @@ TEST_CASE( "fixed impact parameter" ) {
     {"nucleon-width", 0.5},
     {"constit-width", 0.5},
     {"constit-number", 1},
-    {"constit-position-radius", 0.0},
     {"nucleon-min-dist", 0.2},
   });
 
@@ -146,7 +144,6 @@ const auto seed = static_cast<int64_t>(std::random_device{}());
         {"nucleon-width", 0.5},
         {"constit-width", 0.5},
         {"constit-number", 1},
-        {"constit-position-radius", 0.0},
         {"nucleon-min-dist", 0.4},
       })};
 
