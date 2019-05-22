@@ -105,6 +105,9 @@ class NucleonCommon {
   /// Fast exponential for calculating the thickness profile.
   const FastExp<double> fast_exp_;
 
+  /// Gaussian nucleon width.
+  const double nucleon_width_;
+
   /// Gaussian constituent width.
   const double constituent_width_;
 
@@ -322,17 +325,19 @@ class MonteCarloCrossSection {
   double operator() (const double sigma_partonic) const;
 
  private:
-  std::size_t constituent_number_;
-  double constituent_width_;
-  double sampling_width_;
-  double constituent_width_sq_;
-  double prefactor_;
+  const double nucleon_width_;
+  const double constituent_width_;
+  const std::size_t constituent_number_;
+  const double sampling_width_;
+  const double max_impact_;
+  const double constituent_width_sq_;
+  const double prefactor_;
 
-  const std::size_t n_max = 1000000;
-  const std::size_t cache_size = 100000;
+  const std::size_t n_max = 10000000;
+  const std::size_t cache_size = 1000000;
   const std::size_t n_loops = 10;
   const int n_pass = 10000;
-  const double tolerance = 0.001;
+  const double tolerance = 1e-4;
 };
 
 }  // namespace trento

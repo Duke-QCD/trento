@@ -155,8 +155,8 @@ TEST_CASE( "nucleon" ) {
 
   // test nucleon-nucleon cross section with random constituent substructure
   auto nucleon_width = 0.5;
-  auto constituent_width = .3;
-  auto constituent_number = 3;
+  auto constituent_number = std::uniform_int_distribution<>{2, 6}(random::engine);
+  auto constituent_width = .3 + .2*random::canonical<>();
 
   // Coarse-ish p+p grid.
   auto grid_max = 3.;
@@ -175,10 +175,10 @@ TEST_CASE( "nucleon" ) {
   });
 
   NucleonCommon nc_constituent{var_map};
+  bmax = nc_constituent.max_impact();
 
   // inelastic collision counter
-  auto ncoll = 0;
-  nev = 1e8;
+  count = 0;
 
   // measure the cross section with min bias p+p collisions
   for (auto i = 0; i < static_cast<int>(nev); ++i) {
@@ -186,16 +186,14 @@ TEST_CASE( "nucleon" ) {
     A.sample_nucleons(.5*b);
     B.sample_nucleons(-.5*b);
     if (nc_constituent.participate(*A.begin(), *B.begin()))
-      ++ncoll;
+      ++count;
   }
 
   // calculate Monte Carlo cross section
-  auto fraction = double(ncoll)/nev;
-  auto area = math::double_constants::pi * bmax * bmax;
-  auto mc_xsec = fraction * area;
+  xsec_mc = M_PI*bmax*bmax * static_cast<double>(count)/nev;
 
   // assert a rather loose tolerance for the numerical cross section finder
-  CHECK( mc_xsec/xsec == Approx(1).epsilon(.02) );
+  CHECK( xsec_mc/xsec == Approx(1).epsilon(.02) );
 
   // verify root-mean-square nucleon width for nucleons with substructure
   double mean_square_width_num = 0.0;
