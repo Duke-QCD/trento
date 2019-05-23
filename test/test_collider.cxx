@@ -31,6 +31,8 @@ TEST_CASE( "collider" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"constit-width", 0.5},
+    {"constit-number", 1},
     {"nucleon-min-dist", 0.},
   });
 
@@ -94,6 +96,8 @@ TEST_CASE( "fixed impact parameter" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"constit-width", 0.5},
+    {"constit-number", 1},
     {"nucleon-min-dist", 0.2},
   });
 
@@ -121,11 +125,11 @@ TEST_CASE( "fixed impact parameter" ) {
 TEST_CASE( "random seed" ) {
   std::vector<std::string> output(5);
 
-  const auto seed = static_cast<int64_t>(std::random_device{}());
+const auto seed = static_cast<int64_t>(std::random_device{}());
 
   // run several collider batches with the same seed
   std::generate(output.begin(), output.end(),
-    [&seed]() {
+      [&seed]() {
       Collider collider{make_var_map({
         {"number-events", 3},
         {"quiet", false},
@@ -141,6 +145,8 @@ TEST_CASE( "random seed" ) {
         {"fluctuation", 1.},
         {"cross-section", 6.4},
         {"nucleon-width", 0.5},
+        {"constit-width", 0.5},
+        {"constit-number", 1},
         {"nucleon-min-dist", 0.4},
       })};
 
@@ -173,6 +179,8 @@ TEST_CASE( "binary collisions" ) {
     {"fluctuation", 1.},
     {"cross-section", 6.4},
     {"nucleon-width", 0.5},
+    {"constit-width", 0.5},
+    {"constit-number", 1},
     {"nucleon-min-dist", 0.},
   });
 

@@ -115,6 +115,12 @@ int main(int argc, char* argv[]) {
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
+    ("constit-width,v",
+     po::value<double>()->value_name("FLOAT")->default_value(.5, "same"),
+     "Gaussian constituent width [fm]")
+    ("constit-number,m",
+     po::value<int>()->value_name("INT")->default_value(1, "1"),
+     "Number of constituents in the nucleon")
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
@@ -216,6 +222,27 @@ int main(int argc, char* argv[]) {
       }
     }
 
+    // Set default constituent width equal to the nucleon width.
+    if (var_map["constit-width"].defaulted()) {
+      var_map.at("constit-width").value() = var_map["nucleon-width"].as<double>();
+    }
+
+    double nucleon_width = var_map["nucleon-width"].as<double>();
+    double constituent_width = var_map["constit-width"].as<double>();
+    int constituent_number = var_map["constit-number"].as<int>();
+
+    // Constituent and nucleon widths must be non-negative.
+    if ((nucleon_width < 0) || (constituent_width < 0))
+      throw po::error{"nucleon and constituent widths must be non-negative"};
+
+    // Constituent width cannot be larger than nucleon width.
+    if (constituent_width > nucleon_width)
+      throw po::error{"constituent width cannot be larger than nucleon width"};
+
+    // Cannot fit nucleon width using single constituent if different sizes.
+    if ((constituent_width < nucleon_width) && constituent_number == 1)
+      throw po::error{"cannot fit nucleon width using single constituent if different sizes"};
+
     // Save all the final values into var_map.
     // Exceptions may occur here.
     po::notify(var_map);
@@ -226,7 +253,7 @@ int main(int argc, char* argv[]) {
   }
   catch (const po::required_option&) {
     // Handle this exception separately from others.
-    // This occurs e.g. when the program is excuted with no arguments.
+    // This occurs e.g. when the program is executed with no arguments.
     std::cerr << usage_str << "run 'trento --help' for more information\n";
     return 1;
   }

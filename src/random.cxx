@@ -4,6 +4,7 @@
 
 #include "random.h"
 
+
 namespace trento { namespace random {
 
 // Seed random number generator from hardware device.

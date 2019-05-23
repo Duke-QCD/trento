@@ -24,6 +24,7 @@ d          deuteron  2             ---
 Cu         copper    63            no
 Cu2        copper    63            yes
 Xe         xenon     129           no
+Xe2        xenon     129           yes
 Au         gold      197           no
 Au2        gold      197           yes
 Pb         lead      208           no
@@ -32,7 +33,7 @@ U, U2, U3  uranium   238           yes
 
 For the deuteron, nucleon positions are sampled from the Hulthén wavefunction;
 for the heavy nuclei, positions are sampled from a `Woods-Saxon <https://en.wikipedia.org/wiki/Woods%E2%80%93Saxon_potential>`_ distribution, either spherically symmetric or deformed as indicated.
-Copper and gold are slightly deformed—slightly enough that a symmetric distribution is a reasonable approximation—therefore both symmetric (``Cu``, ``Au``) and deformed (``Cu2``, ``Au2``) versions are provided, where both versions have the same nuclear radius and surface thickness.
+Copper, xenon, and gold are slightly deformed—slightly enough that a symmetric distribution is a reasonable approximation—therefore both symmetric (``Cu``, ``Xe``, ``Au``) and deformed (``Cu2``, ``Xe2``, ``Au2``) versions are provided, where both versions have the same nuclear radius and surface thickness.
 There is no consensus on the uranium Woods-Saxon parameters, so three commonly used sets are provided:
 
 ======  ====  ====  =====  =====
@@ -81,9 +82,9 @@ The default output mode is to print event-by-event properties to stdout, in the 
 with one line for each event, where
 
 - ``event_number`` is an integer counter,
-- ``impact_param`` is the collision impact parameter,
+- ``impact_param`` is the collision impact parameter [fm],
 - ``npart`` is the number of nucleon participants,
-- ``mult`` is the total initial entropy, and
+- ``mult`` is the integrated reduced thickness, and
 - the ``en`` are the eccentricity harmonics ɛ\ :sub:`n`.
 
 This format is designed for easy parsing, redirection to files, etc.
@@ -96,7 +97,7 @@ Optionally, enabling ``--ncoll`` will also calculate the binary collision number
 It also adds the ``ncoll`` attribute to both text and hdf5 output files.
 It's worth noting that the code will run noticeably faster with ``--ncoll`` disabled, as it can skip checking pairwise collisions between nucleons which have already been struck.
 
-By default, the actual initial entropy profiles (grids) are not output.
+By default, the actual initial density profiles (grids) are not output.
 There are two available output formats: text and HDF5 (if compiled).
 
 In text mode, each event is written to a separate text file as a standard block-style grid, along with a commented header containing the event properties, like this::
@@ -168,7 +169,8 @@ These options control the physical behavior of the model.
 
 ``-k, --fluctuation FLOAT``
    `Gamma distribution <https://en.wikipedia.org/wiki/Gamma_distribution>`_ shape parameter *k* for nucleon fluctuations.
-   Fluctuations are sampled from a gamma distribution with the scale parameter fixed so that the mean is one:
+   Fluctuations are implemented by multiplying the density of each nucleon (or nucleon constituent) by a random weight.
+   The weights are sampled from a gamma distribution with the scale parameter fixed so that the mean is one:
 
    .. math::
 
@@ -186,6 +188,40 @@ These options control the physical behavior of the model.
       T_\text{nucleon}(x, y) = \frac{1}{2\pi w^2} \exp\biggl( -\frac{x^2 + y^2}{2w^2} \biggr)
 
    The default is 0.5 fm.
+   If nucleon substructure is enabled (see below), the parameter *-w* specifies the *ensemble-averaged* Gaussian nucleon width.
+
+``-v, --constit-width FLOAT``
+   Gaussian constituent width in fm:
+
+   .. math::
+
+      T_\text{constit}(x, y) = \frac{1}{2\pi v^2} \exp\biggl( -\frac{x^2 + y^2}{2v^2} \biggr)
+
+   By default, the constituent width is set equal to the nucleon width.
+   It can take any positive real value, but it must not be set larger than the nucleon width.
+
+   .. versionadded:: 2.0
+
+``-m, --constit-number INT``
+   Number of constituents inside the nucleon.
+   The default is *m=1*, which means the nucleon is a single Gaussian (no substructure).
+   Setting the constituent number *m > 1* divides the nucleon into *m* Gaussians, each of width *v*.
+   The constituent positions are sampled from the probability distribution
+
+   .. math::
+
+    P(x, y) = \frac{1}{2\pi r^2} \exp\biggl[ -\frac{(x - x')^2 + (y - y')^2}{2r^2} \biggr],
+
+   where `(x', y')` is the transverse position of the parent nucleon, and `r` is a constituent dispersion width, equal to
+
+   .. math::
+
+    r = \sqrt{\frac{w^2 - v^2}{1 - 1/m}}.
+
+   Once sampled, the constituent positions are recentered so their centers of mass coincide with the presampled nucleon position `(x', y')`.
+   Averaged over many samples, this procedure recovers a single Gaussian of width `w` as desired.
+
+   .. versionadded:: 2.0
 
 .. _nucleon-min-dist:
 
@@ -261,7 +297,7 @@ Computation time is roughly proportional to the number of grid cells (i.e. *N*\ 
 ``--grid-step FLOAT``
    Size of grid cell in fm.
    The default is 0.2 fm, sufficient to achieve ~99.9% precision for the event properties.
-   This can reasonably be increased as far as the nucleon width; beyond that and precision suffers significantly.
+   This can reasonably be increased as far as the nucleon (or constituent) width; beyond that and precision suffers significantly.
 
 The grid will always be a square *N* × *N* array, with *N* = ceil(2*max/step).
 So e.g. the default settings (max = 10 fm, step = 0.2 fm) imply a 100 × 100 grid.
@@ -344,7 +380,7 @@ The following files were created from publicly available data and can be input d
 They are redistributed with permission from the authors.
 
 - |3He| configurations are from the `PHOBOS Glauber model <https://tglaubermc.hepforge.org>`_, created by Joe Carlson at LANL (`ref <http://journals.aps.org/rmp/abstract/10.1103/RevModPhys.70.743>`_).
-- |197Au| and |208Pb| configurations including realistic nucleon-nucleon correlations were created by Massimiliano Alvioli (`ref 1 <http://inspirehep.net/record/820666>`_, `ref 2 <http://inspirehep.net/record/1082705>`_) and are available on `his website <http://users.phys.psu.edu/~malvioli/eventgenerator>`_.
+- |208Pb| configurations including realistic nucleon-nucleon correlations were created by Massimiliano Alvioli (`ref 1 <http://inspirehep.net/record/820666>`_, `ref 2 <http://inspirehep.net/record/1082705>`_) and are available on `his website <http://users.phys.psu.edu/~malvioli/eventgenerator>`_.
 
 If you use these configurations in your research, please cite the original authors.
 
@@ -352,22 +388,14 @@ If you use these configurations in your research, please cite the original autho
 Species  File             No. configs  Size     sha1sum
 =======  ===============  ===========  =======  ============================================
 |3He|    He3.hdf_          13,699      484 KiB  ``a50c22ad8999db185e50fa513adf8100c29fba8c``
-|197Au|  Au197.hdf_         1,820      4.2 MiB  ``9124eeab163bb2fbc6a919cb96efd44b99cac6be``
-|208Pb|  Pb208_10k.hdf_    10,000       24 MiB  ``4d5c76cb4b5535538b57864a1287a4695abc29d1``
-|208Pb|  Pb208_100k.hdf_  100,000      239 MiB  ``d67f7aca2b14f8c705a4bfa0a8aeedcd3a816f6e``
+|208Pb|  Pb208.hdf_        10,000       24 MiB  ``4d5c76cb4b5535538b57864a1287a4695abc29d1``
 =======  ===============  ===========  =======  ============================================
 
 .. |3He| replace:: :sup:`3`\ He
-.. |197Au| replace:: :sup:`197`\ Au
 .. |208Pb| replace:: :sup:`208`\ Pb
 
 .. _He3.hdf: nuclear-configs/He3.hdf
-.. _Au197.hdf: nuclear-configs/Au197.hdf
-.. _Pb208_10k.hdf: nuclear-configs/Pb208_10k.hdf
-.. _Pb208_100k.hdf: nuclear-configs/Pb208_100k.hdf
-
-Pb208_10k.hdf_ contains the same data as the first 10,000 configurations in Pb208_100k.hdf_.
-The smaller file is provided for convenience.
+.. _Pb208.hdf: nuclear-configs/Pb208.hdf
 
 To use pre-generated configurations, specify a path to an appropriate file on the command line in place of a species abbreviation::
 
@@ -400,4 +428,3 @@ The easiest way to write an HDF5 file is with `h5py <http://www.h5py.org>`_::
    with h5py.File('nuclear_configs.hdf') as f:
       # the name of the dataset does not matter as long as there is only one
       f.create_dataset('configs', data=configs, dtype=np.float32)
-

@@ -76,11 +76,11 @@ Event::Event(const VarMap& var_map)
 }
 
 void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
-                    NucleonProfile& profile) {
+                    const NucleonCommon& nucleon_common) {
   // Reset npart; compute_nuclear_thickness() increments it.
   npart_ = 0;
-  compute_nuclear_thickness(nucleusA, profile, TA_);
-  compute_nuclear_thickness(nucleusB, profile, TB_);
+  compute_nuclear_thickness(nucleusA, nucleon_common, TA_);
+  compute_nuclear_thickness(nucleusB, nucleon_common, TB_);
   compute_reduced_thickness_();
   compute_observables();
 }
@@ -101,7 +101,7 @@ inline const T& clip(const T& value, const T& min, const T& max) {
 }  // unnamed namespace
 
 void Event::compute_nuclear_thickness(
-    const Nucleus& nucleus, NucleonProfile& profile, Grid& TX) {
+    const Nucleus& nucleus, const NucleonCommon& nucleon_common, Grid& TX) {
   // Construct the thickness grid by looping over participants and adding each
   // to a small subgrid within its radius.  Compared to the other possibility
   // (grid cells as the outer loop and participants as the inner loop), this
@@ -112,8 +112,6 @@ void Event::compute_nuclear_thickness(
   // Wipe grid with zeros.
   std::fill(TX.origin(), TX.origin() + TX.num_elements(), 0.);
 
-  const double r = profile.radius();
-
   // Deposit each participant onto the grid.
   for (const auto& nucleon : nucleus) {
     if (!nucleon.is_participant())
@@ -121,25 +119,21 @@ void Event::compute_nuclear_thickness(
 
     ++npart_;
 
-    // Work in coordinates relative to (-width/2, -width/2).
-    double x = nucleon.x() + xymax_;
-    double y = nucleon.y() + xymax_;
+    // Get nucleon subgrid boundary {xmin, xmax, ymin, ymax}.
+    const auto boundary = nucleon_common.boundary(nucleon);
 
     // Determine min & max indices of nucleon subgrid.
-    int ixmin = clip(static_cast<int>((x-r)/dxy_), 0, nsteps_-1);
-    int iymin = clip(static_cast<int>((y-r)/dxy_), 0, nsteps_-1);
-    int ixmax = clip(static_cast<int>((x+r)/dxy_), 0, nsteps_-1);
-    int iymax = clip(static_cast<int>((y+r)/dxy_), 0, nsteps_-1);
-
-    // Prepare profile for new nucleon.
-    profile.fluctuate();
+    int ixmin = clip(static_cast<int>((boundary[0]+xymax_)/dxy_), 0, nsteps_-1);
+    int ixmax = clip(static_cast<int>((boundary[1]+xymax_)/dxy_), 0, nsteps_-1);
+    int iymin = clip(static_cast<int>((boundary[2]+xymax_)/dxy_), 0, nsteps_-1);
+    int iymax = clip(static_cast<int>((boundary[3]+xymax_)/dxy_), 0, nsteps_-1);
 
     // Add profile to grid.
     for (auto iy = iymin; iy <= iymax; ++iy) {
-      double dysq = std::pow(y - (static_cast<double>(iy)+.5)*dxy_, 2);
       for (auto ix = ixmin; ix <= ixmax; ++ix) {
-        double dxsq = std::pow(x - (static_cast<double>(ix)+.5)*dxy_, 2);
-        TX[iy][ix] += profile.thickness(dxsq + dysq);
+        TX[iy][ix] += nucleon_common.thickness(
+          nucleon, (ix+.5)*dxy_ - xymax_, (iy+.5)*dxy_ - xymax_
+        );
       }
     }
   }

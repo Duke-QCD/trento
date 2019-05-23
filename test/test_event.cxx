@@ -22,7 +22,7 @@ TEST_CASE( "event" ) {
     // Random physical params.
     auto norm = 1. + .5*random::canonical<>();
     auto xsec = 4. + 3.*random::canonical<>();
-    auto nucleon_width = .5 + .2*random::canonical<>();
+    auto width = .5 + .2*random::canonical<>();
 
     // Effectively disable fluctuations to deterministically compute thickness.
     auto fluct = 1e12;
@@ -40,11 +40,13 @@ TEST_CASE( "event" ) {
         {"grid-step", grid_step},
         {"fluctuation",   fluct},
         {"cross-section", xsec},
-        {"nucleon-width", nucleon_width},
+        {"nucleon-width", width},
+        {"constit-width", width},
+        {"constit-number", 1},
     });
 
     Event event{var_map};
-    NucleonProfile profile{var_map};
+    NucleonCommon nc{var_map};
 
     CHECK( event.reduced_thickness_grid().num_dimensions() == 2 );
     CHECK( static_cast<int>(event.reduced_thickness_grid().shape()[0]) == grid_nsteps );
@@ -60,10 +62,10 @@ TEST_CASE( "event" ) {
 
     for (auto&& A : *nucleusA)
       for (auto&& B : *nucleusB)
-        profile.participate(A, B);
+        nc.participate(A, B);
 
     // Run a normal Event.
-    event.compute(*nucleusA, *nucleusB, profile);
+    event.compute(*nucleusA, *nucleusB, nc);
 
     // Verify npart.
     auto count_part = [](const Nucleus& nucleus) {
@@ -79,13 +81,11 @@ TEST_CASE( "event" ) {
     // Compute TR grid the slow way -- switch the order of grid and nucleon loops.
     boost::multi_array<double, 2> TR{boost::extents[grid_nsteps][grid_nsteps]};
 
-    auto thickness = [&profile](const Nucleus& nucleus, double x, double y) {
+    auto thickness = [&nc](const Nucleus& nucleus, double x, double y) {
       auto t = 0.;
       for (const auto& n : nucleus) {
         if (n.is_participant()) {
-          auto dx = n.x() - x;
-          auto dy = n.y() - y;
-          t += profile.thickness(dx*dx + dy*dy);
+          t += nc.thickness(n, x, y);
         }
       }
       return t;
@@ -149,6 +149,8 @@ TEST_CASE( "event" ) {
           auto x = ix - xcm;
           auto y = iy - ycm;
           auto w = TR[iy][ix] * std::pow(x*x + y*y, .5*n);
+          //if (w > 0)
+          //  std::cout << w << std::endl;
           // compute exp(i*n*phi) the naive way
           auto phi = std::atan2(y, x);
           real += w*std::cos(n*phi);
