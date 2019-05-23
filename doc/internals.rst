@@ -83,6 +83,13 @@ Note that it actually optimizes over the dimensionless variable `\log({\sigma_{g
 
 The nucleon unit test verifies that the cross section is accurately reproduced.
 
+.. note::
+
+   The semi-analytic cross section procedure described above only works for a collision involving two Gaussian particles.
+   If nucleon substructure is enabled, i.e. constituent number *m > 1*, the code uses a Monte Carlo algorithm to fit the cross section parameter `\sigma_{gg}` numerically.
+   This procedure is somewhat slow, and it scales poorly with the number of constituents.
+   For *m > 10*, it could easily take a minute or longer, so the code caches the value of `\sigma_{gg}` in the user's XDG_DATA_HOME directory.
+
 List of classes
 ---------------
 This section is automatically generated from the source code by `Doxygen <http://www.stack.nl/~dimitri/doxygen>`_ and converted into `Sphinx <http://sphinx-doc.org>`_ format by `Breathe <https://breathe.readthedocs.org>`_.
@@ -121,15 +128,15 @@ Nucleus types
 .. doxygenclass:: trento::DeformedWoodsSaxonNucleus
 .. doxygenclass:: trento::ManualNucleus
 
-Nucleon
-~~~~~~~
-.. doxygenclass:: trento::Nucleon
-   :members: Nucleon, x, y, z, is_participant, set_position, set_participant
+NucleonData
+~~~~~~~~~~~
+.. doxygenclass:: trento::NucleonData
+   :members: NucleonData, is_participant, constituents_exist, x, y, z, set_position
 
-Nucleon profile
+NucleonCommon
 ~~~~~~~~~~~~~~~
-.. doxygenclass:: trento::NucleonProfile
-   :members:
+.. doxygenclass:: trento::NucleonCommon
+   :members: NucleonCommon, max_impact, boundary, thickness, participate, sample_constituent_positions, set_participant
 
 Fast exponential
 ~~~~~~~~~~~~~~~~

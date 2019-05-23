@@ -61,8 +61,8 @@ class Event {
   { return npart_; }
 
   /// \rst
-  /// Multiplicity---or more specifically, total entropy.  May be interpreted
-  /// as `dS/dy` or `dS/d\eta` at midrapidity.
+  /// Multiplicity---or more specifically, total integrated reduced thickness.  May be interpreted
+  /// as `dS/d\eta` or `dE/d\eta` at midrapidity.
   /// \endrst
   const double& multiplicity() const
   { return multiplicity_; }

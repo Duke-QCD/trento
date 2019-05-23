@@ -41,6 +41,10 @@ NucleusPtr Nucleus::create(const std::string& species, double nucleon_dmin) {
        63, 4.20, 0.596, 0.162, -0.006, nucleon_dmin
     }};
   else if (species == "Xe")
+    return NucleusPtr{new WoodsSaxonNucleus{
+      129, 5.36, 0.590, nucleon_dmin
+    }};
+  else if (species == "Xe2")
     return NucleusPtr{new DeformedWoodsSaxonNucleus{
       129, 5.36, 0.590, 0.162, -0.003, nucleon_dmin
     }};
