@@ -189,7 +189,7 @@ double partonic_cross_section(const VarMap& var_map) {
 
   // Establish trento cache path
   auto cache_dir = get_data_home() / "trento";
-  auto cache_path = cache_dir / "cross_section.dat";
+  auto cache_path = cache_dir / "cross_section.cache";
   fs::create_directory(cache_dir);
 
   // Check if cache exists
