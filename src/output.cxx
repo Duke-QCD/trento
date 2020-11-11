@@ -33,7 +33,9 @@ void write_stream(std::ostream& os, int width, int num, double impact_param,
   os << setprecision(10)
      << setw(width)            << num
      << setw(15) << fixed      << impact_param
-     << setw(5)                << event.npart();
+     << setw(5)                << event.npart()
+     << setw(5)                << event.npartA()
+     << setw(5)                << event.npartB();
 
   // Output ncoll if calculated
   if (ncoll > 0) os << setw(6) << ncoll;
@@ -41,8 +43,12 @@ void write_stream(std::ostream& os, int width, int num, double impact_param,
   os << setw(18) << scientific << event.multiplicity()
      << fixed;
 
-  for (const auto& ecc : event.eccentricity())
-    os << setw(14)             << ecc.second;
+  for (auto & it: event.dET_detas())
+     os << setw(18) << scientific << it
+     << fixed;
+
+  //for (const auto& ecc : event.ecc_mag())
+  //  os << setw(14)             << ecc.second;
 
   os << '\n';
 }
@@ -67,23 +73,25 @@ void write_text_file(const fs::path& output_dir, int width, int num,
 
     ofs << "# mult  = " << event.multiplicity() << '\n';
 
-    for (const auto& ecc : event.eccentricity())
-      ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
+    //for (const auto& ecc : event.eccentricity())
+    //  ofs << "# e" << ecc.first << "    = " << ecc.second << '\n';
   }
 
   // Write IC profile as a block grid.  Use C++ default float format (not
   // fixed-width) so that trailing zeros are omitted.  This significantly
   // increases output speed and saves disk space since many grid elements are
   // zero.
-  for (const auto& row : event.reduced_thickness_grid()) {
-    auto&& iter = row.begin();
-    // Write all row elements except the last with a space delimiter afterwards.
-    do {
-      ofs << *iter << ' ';
-    } while (++iter != --row.end());
+  for (const auto & slice : event.Density()) {
+    for (const auto & row : slice){
+      auto&& iter = row.begin();
+      // Write all row elements except the last with a space delimiter afterwards.
+      do {
+        ofs << *iter << ' ';
+      } while (++iter != --row.end());
 
-    // Write the last element and a linebreak.
-    ofs << *iter << '\n';
+      // Write the last element and a linebreak.
+      ofs << *iter << '\n';
+    }
   }
 }
 
@@ -125,11 +133,11 @@ void HDF5Writer::operator()(int num, double impact_param,
   const std::string name{"event_" + std::to_string(num)};
 
   // Cache a reference to the event grid -- will need it several times.
-  const auto& grid = event.reduced_thickness_grid();
+  const auto& grid = event.Density();
 
   // Define HDF5 datatype and dataspace to match the grid.
   const auto& datatype = hdf5::type<Event::Grid::element>();
-  std::array<hsize_t, Event::Grid::dimensionality> shape;
+  std::array<hsize_t, Event::Grid3D::dimensionality> shape;
   std::copy(grid.shape(), grid.shape() + shape.size(), shape.begin());
   auto dataspace = hdf5::make_dataspace(shape);
 
@@ -155,8 +163,8 @@ void HDF5Writer::operator()(int num, double impact_param,
   if (ncoll > 0) hdf5_add_scalar_attr(dataset, "ncoll", ncoll);
 
   hdf5_add_scalar_attr(dataset, "mult", event.multiplicity());
-  for (const auto& ecc : event.eccentricity())
-    hdf5_add_scalar_attr(dataset, "e" + std::to_string(ecc.first), ecc.second);
+  //for (const auto& ecc : event.eccentricity())
+  //  hdf5_add_scalar_attr(dataset, "e" + std::to_string(ecc.first), ecc.second);
 }
 
 #endif  // TRENTO_HDF5

@@ -106,12 +106,11 @@ int main(int argc, char* argv[]) {
 
   OptDesc phys_opts{"physical options"};
   phys_opts.add_options()
-    ("reduced-thickness,p",
-     po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
-     "reduced thickness parameter")
-    ("fluctuation,k",
-     po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
-     "gamma fluctuation shape parameter")
+    // Random seet
+    ("random-seed",
+     po::value<int64_t>()->value_name("INT")->default_value(-1, "auto"),
+     "random seed")
+    // Nulcear configuration parameters
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm]")
@@ -124,21 +123,47 @@ int main(int argc, char* argv[]) {
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
-    ("cross-section,x",
-     po::value<double>()->value_name("FLOAT")->default_value(6.4, "6.4"),
-     "inelastic nucleon-nucleon cross section sigma_NN [fm^2]")
-    ("normalization,n",
+    ("fluctuation,k",
      po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
-     "normalization factor")
+     "gamma fluctuation shape parameter")
+    // Impact parameter cuts
     ("b-min",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum impact parameter [fm]")
     ("b-max",
      po::value<double>()->value_name("FLOAT")->default_value(-1., "auto"),
      "maximum impact parameter [fm]")
-    ("random-seed",
-     po::value<int64_t>()->value_name("INT")->default_value(-1, "auto"),
-     "random seed");
+    // Collision and kinetic parameters
+    ("sqrts,s",
+     po::value<double>()->value_name("FLOAT")->default_value(2760., "2760."),
+     "CoM energy of collision [GeV], also determines cross-section")
+    ("kT-min,t",
+     po::value<double>()->value_name("FLOAT")->default_value(.3, ".3"),
+     "Minimum transverse kinematic cut, used to determine eta-max [GeV]")
+    // Energy production parameters:
+    //   --- Ta Tb scaling parameters: p, a
+    ("reduced-thickness,p",
+     po::value<double>()->value_name("FLOAT")->default_value(0., "0."),
+     "reduced thickness parameter (trento p at eta=0)")
+    //   --- rapidity shape parameters: a, b, g
+    ("shape-alpha",
+     po::value<double>()->value_name("FLOAT")->default_value(2., "2."),
+     "fragmentation region shape parameter: alpha")
+    ("shape-beta",
+     po::value<double>()->value_name("FLOAT")->default_value(1.5, "1.5"),
+     "fragmentation region shape parameter: beta")
+    ("deposit-power",
+     po::value<double>()->value_name("FLOAT")->default_value(0, "0"),
+     "power of energy deposition")
+    ("deposit-norm",
+     po::value<double>()->value_name("FLOAT")->default_value(1, "1"),
+     "norm of energy deposition")
+    ("mid-power",
+     po::value<double>()->value_name("FLOAT")->default_value(0.5, "0.5"),
+     "power of energy deposition")
+    ("mid-norm",
+     po::value<double>()->value_name("FLOAT")->default_value(1, "1"),
+     "norm of energy deposition");
 
   OptDesc grid_opts{"grid options"};
   grid_opts.add_options()
@@ -147,6 +172,9 @@ int main(int argc, char* argv[]) {
      "xy max [fm]\n(grid extends from -max to +max)")
     ("grid-step",
      po::value<double>()->value_name("FLOAT")->default_value(0.2, "0.2"),
+     "step size [fm]")
+    ("nsteps-etas",
+     po::value<int>()->value_name("INT")->default_value(1, "1"),
      "step size [fm]");
 
   // Make a meta-group containing all the option groups except the main

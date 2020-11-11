@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4)
-project(trento VERSION 2.0 LANGUAGES CXX)
+project(trento-3 VERSION 2.0 LANGUAGES CXX)
 
 # require C++11
 set(CMAKE_CXX_STANDARD 11)
@@ -16,9 +16,13 @@ if(STATIC)
   set(CMAKE_LINK_SEARCH_START_STATIC TRUE)
 endif()
 
+
 # Find and use Boost.
 find_package(Boost 1.50 REQUIRED COMPONENTS filesystem program_options system)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+
+find_package(GSL REQUIRED )
+include_directories(SYSTEM ${GSL_INCLUDE_DIRS})
 
 # Find the HDF5 C++ library.  The CMake FindHDF5 module does not work reliably,
 # e.g. sometimes it links unnecessary libraries, other times it fails to include

@@ -57,6 +57,12 @@ fs::path get_data_home() {
   return data_path;
 }
 
+// fitted sigma_nn_inel within 5 GeV < sqrt{s} < 10^5 GeV [fm^2]
+double SigmaNN(double sqrts){
+    double logsqrts = std::log(sqrts);
+    return (0.073491826*logsqrts-.19313457)*logsqrts+3.123737545;
+}
+
 // Test approximate cross section parameter equality.
 bool almost_equal(double a, double b) {
   return fabs(a - b) < 1e-6;
@@ -84,7 +90,7 @@ double calc_sampling_width(const VarMap& var_map) {
 // This semi-analytic method is only valid for one constituent.
 double analytic_partonic_cross_section(const VarMap& var_map) {
   // Read parameters from the configuration.
-  auto sigma_nn = var_map["cross-section"].as<double>();
+  auto sigma_nn = SigmaNN(var_map["sqrts"].as<double>());
   auto width = var_map["nucleon-width"].as<double>();
 
   // TODO: automatically set from beam energy
@@ -137,7 +143,7 @@ double analytic_partonic_cross_section(const VarMap& var_map) {
 // This Monte Carlo numeric method is used for more than one constituent.
 double numeric_partonic_cross_section(const VarMap& var_map) {
   MonteCarloCrossSection mc_cross_section(var_map);
-  auto sigma_nn = var_map["cross-section"].as<double>();
+  auto sigma_nn = SigmaNN(var_map["sqrts"].as<double>());
   auto width = var_map["constit-width"].as<double>();
 
   // Bracket min and max.
@@ -178,7 +184,7 @@ double partonic_cross_section(const VarMap& var_map) {
   auto nucleon_width = var_map["nucleon-width"].as<double>();
   auto constituent_width = var_map["constit-width"].as<double>();
   auto constituent_number = var_map["constit-number"].as<int>();
-  auto sigma_nn = var_map["cross-section"].as<double>();
+  auto sigma_nn = SigmaNN(var_map["sqrts"].as<double>());
 
   // Cross section parameters
   double nucleon_width_;
@@ -257,7 +263,7 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
       sigma_partonic_(partonic_cross_section(var_map)),
       prefactor_(math::double_constants::one_div_two_pi/constituent_width_sq_/constituent_number_),
       calc_ncoll_(var_map["ncoll"].as<bool>()),
-      participant_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
+      //participant_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
       constituent_position_dist_(0, sampling_width_)
 {}
 

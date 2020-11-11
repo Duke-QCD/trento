@@ -137,7 +137,7 @@ class NucleonCommon {
 
   /// Gamma random variables used to weight each nucleon (or constituent)
   /// contribution. Controlled by the fluctuation parameter.
-  mutable std::gamma_distribution<double> participant_fluctuation_dist_;
+  //mutable std::gamma_distribution<double> participant_fluctuation_dist_;
 
   /// Gaussian distribution for sampling constituent positions.
   mutable std::normal_distribution<double> constituent_position_dist_;
@@ -296,7 +296,7 @@ inline void NucleonCommon::sample_constituent_positions(NucleonData& nucleon) co
 
     constituent.x = xloc;
     constituent.y = yloc;
-    constituent.fluctuation = participant_fluctuation_dist_(random::engine);
+    constituent.fluctuation = 1.0;
 
     xcom += xloc;
     ycom += yloc;

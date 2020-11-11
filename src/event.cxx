@@ -8,32 +8,50 @@
 #include <cmath>
 
 #include <boost/program_options/variables_map.hpp>
-
 #include "nucleus.h"
+#include <boost/math/special_functions/gamma.hpp>
+#include <boost/math/special_functions/beta.hpp>
+#include <boost/math/special_functions/hypergeometric_1F1.hpp>
+#include <boost/math/special_functions/erf.hpp>
+#include <boost/math/constants/constants.hpp>
+#include <boost/math/tools/roots.hpp>
+#include <boost/math/quadrature/trapezoidal.hpp>
+using boost::math::quadrature::trapezoidal;
 
 namespace trento {
 
 namespace {
-
 constexpr double TINY = 1e-12;
-
+constexpr double Mproton = 0.938272;
+constexpr double Mneutron = 0.939565;
 // Generalized mean for p > 0.
 // M_p(a, b) = (1/2*(a^p + b^p))^(1/p)
-inline double positive_pmean(double p, double a, double b) {
-  return std::pow(.5*(std::pow(a, p) + std::pow(b, p)), 1./p);
+double pmean(double p, double a, double b) {
+  if (std::abs(p) < 1e-6) return std::sqrt(a*b);
+  else{
+    if (p>0.)
+      return std::pow(.5*(std::pow(a,p)+std::pow(b,p)), 1./p);
+    else{
+      if (a<TINY || b<TINY) return 0.;
+      else return std::pow(.5*(std::pow(a,p)+std::pow(b,p)), 1./p);
+    }
+  }
 }
 
-// Generalized mean for p < 0.
-// Same as the positive version, except prevents division by zero.
-inline double negative_pmean(double p, double a, double b) {
-  if (a < TINY || b < TINY)
-    return 0.;
-  return positive_pmean(p, a, b);
+
+
+inline double EoverM_to_absrap(double p0_over_mT){
+    if (p0_over_mT<=1.) return 0.;
+    else return std::log( p0_over_mT + std::sqrt(std::pow(p0_over_mT,2)-1.) );
 }
 
-// Generalized mean for p == 0.
-inline double geometric_mean(double a, double b) {
-  return std::sqrt(a*b);
+inline double EandP_to_absrap(double E, double P){
+    if (E<(1.+TINY)*P) return 0.;
+    else return .5*std::log((E+P)/(E-P));
+}
+
+inline double PandM_to_rap(double pz_over_mT){
+    return std::log(std::sqrt(std::pow(pz_over_mT,2)+1.) + pz_over_mT);
 }
 
 }  // unnamed namespace
@@ -46,42 +64,116 @@ inline double geometric_mean(double a, double b) {
 //      does not evenly divide the config max, the actual max will be marginally
 //      larger (by at most one step size).
 Event::Event(const VarMap& var_map)
-    : norm_(var_map["normalization"].as<double>()),
+    : scaling_p0_(var_map["reduced-thickness"].as<double>()),
+      deposit_power_(var_map["deposit-power"].as<double>()),
+      deposit_norm_(var_map["deposit-norm"].as<double>()),
+      mid_power_(var_map["mid-power"].as<double>()),
+      mid_norm_(var_map["mid-norm"].as<double>()),
+      shape_alpha_(var_map["shape-alpha"].as<double>()),
+      shape_beta_(var_map["shape-beta"].as<double>()),
+      kT_min_(var_map["kT-min"].as<double>()),
+      sqrts_(var_map["sqrts"].as<double>()),
+      nucleon_pabs_(std::sqrt(.25*sqrts_*sqrts_ - Mproton*Mproton)),
+      eta_max_( std::asinh(.5*sqrts_/kT_min_) ),
+      nsteps_etas_(var_map["nsteps-etas"].as<int>()),
+      detas_(2.*eta_max_/nsteps_etas_),
       dxy_(var_map["grid-step"].as<double>()),
       nsteps_(std::ceil(2.*var_map["grid-max"].as<double>()/dxy_)),
       xymax_(.5*nsteps_*dxy_),
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
-      TR_(boost::extents[nsteps_][nsteps_]) {
-  // Choose which version of the generalized mean to use based on the
-  // configuration.  The possibilities are defined above.  See the header for
-  // more information.
-  auto p = var_map["reduced-thickness"].as<double>();
+      Density_(boost::extents[nsteps_etas_][nsteps_][nsteps_]){
 
-  if (std::fabs(p) < TINY) {
-    compute_reduced_thickness_ = [this]() {
-      compute_reduced_thickness(geometric_mean);
-    };
-  } else if (p > 0.) {
-    compute_reduced_thickness_ = [this, p]() {
-      compute_reduced_thickness(
-        [p](double a, double b) { return positive_pmean(p, a, b); });
-    };
-  } else {
-    compute_reduced_thickness_ = [this, p]() {
-      compute_reduced_thickness(
-        [p](double a, double b) { return negative_pmean(p, a, b); });
-    };
+  // sqrts_minimum = 2*Mproton
+  double sqrts_min = 2.*Mproton;
+  // Midrapidity scale
+  norm_trento_ = mid_norm_ * std::pow(sqrts_/sqrts_min, mid_power_);
+  // energy loss fraction
+  xloss_ = deposit_norm_ * std::pow(sqrts_min/sqrts_, deposit_power_);
+  // Fragmentation region normalization
+  auto f2 = [this](double x){
+      return std::pow(x, this->shape_beta_)
+            *std::exp(-x*(this->shape_alpha_+1));
+  };
+  Nab_ = trapezoidal(f2, 0.0, eta_max_);
+  // Cut fragmentation region
+  auto low = 0.0, high=100.;
+  boost::uintmax_t max_iter = 1000;
+  math::tools::eps_tolerance<double> tol{
+     (std::numeric_limits<double>::digits * 3) / 4
+  };
+  try {
+      auto result = math::tools::toms748_solve(
+        [this](double x) {
+            auto f3 = [this, x](double y){
+                 return std::pow(y, this->shape_beta_)
+                       *std::exp(-y*(this->shape_alpha_+1))
+                       *std::exp(-std::pow(x*y/this->eta_max_,2));
+                };
+        return trapezoidal(f3, 0.0, eta_max_)/this->Nab_ - this->xloss_;
+      },
+      low, high, tol, max_iter
+      );
+      shape_gamma_ = .5*(result.first + result.second);
   }
+  catch (const std::domain_error&) {
+     std::cout << "gamma = " << shape_gamma_
+               << ", sqrts = " << sqrts_<<std::endl;
+    throw std::domain_error{"unable to fit shape-gamma?"};
+  }
+  // table that converts mid-rapidity norm, total energy depsotion
+  // to the half width of the Gaussian distribution
+  std::vector<double> root;
+  for (double rhs=-10; rhs<10; rhs+=.1){
+      try {
+          auto result = math::tools::toms748_solve(
+              [this, rhs](double x) {
+                return .5*x+.5*std::log(x)-rhs;
+          },
+          1e-15, 1e15, tol, max_iter
+          );
+          root.push_back(.5*(result.first + result.second));
+      }     
+      catch (const std::domain_error&) {
+          std::cout << "rhs = " << rhs<<std::endl;
+          throw std::domain_error{"unable to fit half width?"};
+      }
+      
+   }
+   interpolator = std::make_shared<cardinal_cubic_b_spline<double> >(
+                root.begin(), root.end(),
+                -10., .1
+                 );
 }
 
 void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
                     const NucleonCommon& nucleon_common) {
   // Reset npart; compute_nuclear_thickness() increments it.
   npart_ = 0;
+  npartA_ = 0;
+  npartB_ = 0;
+  ixcm_.resize(nsteps_etas_);
+  iycm_.resize(nsteps_etas_);
+  dET_detas_.resize(nsteps_etas_);
+  for (auto & it : ixcm_) it = 0.;
+  for (auto & it : iycm_) it = 0.;
+  for (auto & it : dET_detas_) it = 0.;
+
+  for (const auto& nucleon : nucleusA) {
+    if (nucleon.is_participant()) {
+        npartA_++;
+        npart_++;
+    }
+  }
+  for (const auto& nucleon : nucleusB) {
+    if (nucleon.is_participant()) {
+        npartB_++;
+        npart_++;
+    }
+  }
   compute_nuclear_thickness(nucleusA, nucleon_common, TA_);
   compute_nuclear_thickness(nucleusB, nucleon_common, TB_);
-  compute_reduced_thickness_();
+  compute_density();
   compute_observables();
 }
 
@@ -100,6 +192,7 @@ inline const T& clip(const T& value, const T& min, const T& max) {
 
 }  // unnamed namespace
 
+
 void Event::compute_nuclear_thickness(
     const Nucleus& nucleus, const NucleonCommon& nucleon_common, Grid& TX) {
   // Construct the thickness grid by looping over participants and adding each
@@ -116,8 +209,6 @@ void Event::compute_nuclear_thickness(
   for (const auto& nucleon : nucleus) {
     if (!nucleon.is_participant())
       continue;
-
-    ++npart_;
 
     // Get nucleon subgrid boundary {xmin, xmax, ymin, ymax}.
     const auto boundary = nucleon_common.boundary(nucleon);
@@ -139,27 +230,54 @@ void Event::compute_nuclear_thickness(
   }
 }
 
-template <typename GenMean>
-void Event::compute_reduced_thickness(GenMean gen_mean) {
-  double sum = 0.;
-  double ixcm = 0.;
-  double iycm = 0.;
+
+
+void Event::compute_density() {
+  std::fill(Density_.origin(), Density_.origin()+Density_.num_elements(), 0.);  
 
   for (int iy = 0; iy < nsteps_; ++iy) {
     for (int ix = 0; ix < nsteps_; ++ix) {
-      auto t = norm_ * gen_mean(TA_[iy][ix], TB_[iy][ix]);
-      TR_[iy][ix] = t;
-      sum += t;
-      // Center of mass grid indices.
-      // No need to multiply by dxy since it would be canceled later.
-      ixcm += t * static_cast<double>(ix);
-      iycm += t * static_cast<double>(iy);
+      double ta = TA_[iy][ix];
+      double tb = TB_[iy][ix];
+      if (ta<TINY || tb<TINY) continue;
+      double TR = pmean(scaling_p0_, ta, tb);
+      double Ecenter =xloss_*sqrts_*std::sqrt(ta*tb);
+      double L = (*interpolator)(std::log(
+                  Ecenter/(std::sqrt(2.*M_PI)*norm_trento_*TR) )
+                  );
+      //std::cout<<std::log(
+      //            Ecenter/(std::sqrt(2.*M_PI)*norm_trento_*TR) ) << " ";
+      double ScaleF = ta*kT_min_;
+      double ScaleB = tb*kT_min_;
+      for (int iz = 0; iz < nsteps_etas_; ++iz) {
+        double etas = -eta_max_ + (iz+.5) * detas_;   
+        double TaTb = (ScaleF*(etas>0)+ScaleB*(etas<=0));
+        double mid_profile = std::exp(-.5*std::pow(etas,2)/L);
+        double x = std::abs(2*kT_min_*std::sinh(etas)/sqrts_);
+        double fb_profile = std::pow(x,shape_alpha_)
+         * std::pow(eta_max_-std::abs(etas), shape_beta_)/Nab_
+         *(1.-std::exp(-std::pow(shape_gamma_*std::abs(etas)/eta_max_,2)));
+         Density_[iz][iy][ix] = TR*norm_trento_*mid_profile
+                             + TaTb*fb_profile;
+      }
     }
   }
-
-  multiplicity_ = dxy_ * dxy_ * sum;
-  ixcm_ = ixcm / sum;
-  iycm_ = iycm / sum;
+  // compute multiplicity and com
+  for (int iz = 0; iz < nsteps_etas_; ++iz) { 
+    double sum = 0.;
+    for (int iy = 0; iy < nsteps_; ++iy) {
+      for (int ix = 0; ix < nsteps_; ++ix) {
+        double dE = Density_[iz][iy][ix];
+        if (dE<TINY) continue;
+        ixcm_[iz] += dxy_*ix*dE;
+        iycm_[iz] += dxy_*iy*dE;
+        sum += dE;
+      }
+    }
+    ixcm_[iz] /= sum;
+    iycm_[iz] /= sum;
+    dET_detas_[iz] = sum * dxy_ * dxy_;
+  }
 }
 
 void Event::compute_observables() {
@@ -167,85 +285,122 @@ void Event::compute_observables() {
 
   // Simple helper class for use in the following loop.
   struct EccentricityAccumulator {
-    double re = 0.;  // real part
-    double im = 0.;  // imaginary part
-    double wt = 0.;  // weight
-    double finish() const  // compute final eccentricity
-    { return std::sqrt(re*re + im*im) / std::fmax(wt, TINY); }
-  } e2, e3, e4, e5;
-
-  for (int iy = 0; iy < nsteps_; ++iy) {
-    for (int ix = 0; ix < nsteps_; ++ix) {
-      const auto& t = TR_[iy][ix];
-      if (t < TINY)
-        continue;
-
-      // Compute (x, y) relative to the CM and cache powers of x, y, r.
-      auto x = static_cast<double>(ix) - ixcm_;
-      auto x2 = x*x;
-      auto x3 = x2*x;
-      auto x4 = x2*x2;
-
-      auto y = static_cast<double>(iy) - iycm_;
-      auto y2 = y*y;
-      auto y3 = y2*y;
-      auto y4 = y2*y2;
-
-      auto r2 = x2 + y2;
-      auto r = std::sqrt(r2);
-      auto r4 = r2*r2;
-
-      auto xy = x*y;
-      auto x2y2 = x2*y2;
-
-      // The eccentricity harmonics are weighted averages of r^n*exp(i*n*phi)
-      // over the entropy profile (reduced thickness).  The naive way to compute
-      // exp(i*n*phi) at a given (x, y) point is essentially:
-      //
-      //   phi = arctan2(y, x)
-      //   real = cos(n*phi)
-      //   imag = sin(n*phi)
-      //
-      // However this implementation uses three unnecessary trig functions; a
-      // much faster method is to express the cos and sin directly in terms of x
-      // and y.  For example, it is trivial to show (by drawing a triangle and
-      // using rudimentary trig) that
-      //
-      //   cos(arctan2(y, x)) = x/r = x/sqrt(x^2 + y^2)
-      //   sin(arctan2(y, x)) = y/r = x/sqrt(x^2 + y^2)
-      //
-      // This is easily generalized to cos and sin of (n*phi) by invoking the
-      // multiple angle formula, e.g. sin(2x) = 2sin(x)cos(x), and hence
-      //
-      //   sin(2*arctan2(y, x)) = 2*sin(arctan2(y, x))*cos(arctan2(y, x))
-      //                        = 2*x*y / r^2
-      //
-      // Which not only eliminates the trig functions, but also naturally
-      // cancels the r^2 weight.  This cancellation occurs for all n.
-      //
-      // The Event unit test verifies that the two methods agree.
-      e2.re += t * (y2 - x2);
-      e2.im += t * 2.*xy;
-      e2.wt += t * r2;
-
-      e3.re += t * (y3 - 3.*y*x2);
-      e3.im += t * (3.*x*y2 - x3);
-      e3.wt += t * r2*r;
-
-      e4.re += t * (x4 + y4 - 6.*x2y2);
-      e4.im += t * 4.*xy*(y2 - x2);
-      e4.wt += t * r4;
-
-      e5.re += t * y*(5.*x4 - 10.*x2y2 + y4);
-      e5.im += t * x*(x4 - 10.*x2y2 + 5.*y4);
-      e5.wt += t * r4*r;
+    std::vector<double> re; // real part
+    std::vector<double> im; // imaginary part
+    std::vector<double> wt; // weight
+    void init(int N){
+         re.reserve(N);
+         im.reserve(N);
+         wt.reserve(N);
+         std::fill(re.begin(), re.end(), 0.);
+         std::fill(im.begin(), im.end(), 0.);
+         std::fill(wt.begin(), wt.end(), 0.);
     }
-  }
+    std::vector<double> magnitudes() { 
+         std::vector<double> enabs;
+         enabs.reserve(re.size());
+         for (int i=0; i<enabs.size(); i++)
+             enabs[i] = std::sqrt(re[i]*re[i] + im[i]*im[i]) 
+                      / std::fmax(wt[i], TINY);
+         return enabs;
+    }
+    std::vector<double> angles() { 
+         std::vector<double> enphi;
+         enphi.reserve(re.size());
+         for (int i=0; i<enphi.size(); i++)
+             enphi[i] = std::atan2(im[i], re[i]);
+         return enphi;
+    }
+  } e2, e3, e4, e5;
+  e2.init(nsteps_etas_);
+  e3.init(nsteps_etas_);
+  e4.init(nsteps_etas_);
+  e5.init(nsteps_etas_);
 
-  eccentricity_[2] = e2.finish();
-  eccentricity_[3] = e3.finish();
-  eccentricity_[4] = e4.finish();
-  eccentricity_[5] = e5.finish();
+  for (int iz = 0; iz < nsteps_etas_; ++iz){
+    for (int iy = 0; iy < nsteps_; ++iy) {
+      for (int ix = 0; ix < nsteps_; ++ix) {
+        const auto& t = Density_[iz][iy][ix];
+        if (t < TINY)
+          continue;
+
+        // Compute (x, y) relative to the CM and cache powers of x, y, r.
+        auto x = ix*dxy_ - ixcm_[iz];
+        auto x2 = x*x;
+        auto x3 = x2*x;
+        auto x4 = x2*x2;
+
+        auto y = iy*dxy_ - iycm_[iz];
+        auto y2 = y*y;
+        auto y3 = y2*y;
+        auto y4 = y2*y2;
+
+        auto r2 = x2 + y2;
+        auto r = std::sqrt(r2);
+        auto r4 = r2*r2;
+
+        auto xy = x*y;
+        auto x2y2 = x2*y2;
+
+        // The eccentricity harmonics are weighted averages of r^n*exp(i*n*phi)
+        // over the entropy profile (reduced thickness). 
+        // The naive way to compute
+        // exp(i*n*phi) at a given (x, y) point is essentially:
+        //
+        //   phi = arctan2(y, x)
+        //   real = cos(n*phi)
+        //   imag = sin(n*phi)
+        //
+        // However this implementation uses three unnecessary trig functions; a
+        // much faster method is to express 
+        // the cos and sin directly in terms of x
+        // and y.  For example, it is trivial to show 
+        // (by drawing a triangle and
+        // using rudimentary trig) that
+        //
+        //   cos(arctan2(y, x)) = x/r = x/sqrt(x^2 + y^2)
+        //   sin(arctan2(y, x)) = y/r = x/sqrt(x^2 + y^2)
+        //
+        // This is easily generalized to cos and sin of (n*phi) by invoking the
+        // multiple angle formula, e.g. sin(2x) = 2sin(x)cos(x), and hence
+        //
+        //   sin(2*arctan2(y, x)) = 2*sin(arctan2(y, x))*cos(arctan2(y, x))
+        //                        = 2*x*y / r^2
+        //
+        // Which not only eliminates the trig functions, but also naturally
+        // cancels the r^2 weight.  This cancellation occurs for all n.
+        //
+        // The Event unit test verifies that the two methods agree.
+        e2.re[iz] += t * (y2 - x2);
+        e2.im[iz] += t * 2.*xy;
+        e2.wt[iz] += t * r2;
+
+        e3.re[iz] += t * (y3 - 3.*y*x2);
+        e3.im[iz] += t * (3.*x*y2 - x3);
+        e3.wt[iz] += t * r2*r;
+
+        e4.re[iz] += t * (x4 + y4 - 6.*x2y2);
+        e4.im[iz] += t * 4.*xy*(y2 - x2);
+        e4.wt[iz] += t * r4;
+
+        e5.re[iz] += t * y*(5.*x4 - 10.*x2y2 + y4);
+        e5.im[iz] += t * x*(x4 - 10.*x2y2 + 5.*y4);
+        e5.wt[iz] += t * r4*r;
+      }
+    }
+    ecc_mag_[2] = e2.magnitudes();
+    ecc_ang_[2] = e2.angles();
+
+    ecc_mag_[3] = e3.magnitudes();
+    ecc_ang_[3] = e3.angles();
+
+    ecc_mag_[4] = e4.magnitudes();
+    ecc_ang_[4] = e4.angles();
+
+    ecc_mag_[5] = e5.magnitudes();
+    ecc_ang_[5] = e5.angles();
+
+  }
 }
 
 }  // namespace trento

@@ -12,6 +12,8 @@
 #define BOOST_DISABLE_ASSERTS
 #endif
 #include <boost/multi_array.hpp>
+#include <boost/math/interpolators/cardinal_cubic_b_spline.hpp>
+using boost::math::interpolators::cardinal_cubic_b_spline;
 
 #include "fwd_decl.h"
 
@@ -56,16 +58,28 @@ class Event {
   // Alias for a two-dimensional thickness grid.
   using Grid = boost::multi_array<double, 2>;
 
+  // Alias for a three-dimensional thickness grid.
+  using Grid3D = boost::multi_array<double, 3>;
+
+
   /// Number of nucleon participants.
   const int& npart() const
   { return npart_; }
+  const int& npartA() const
+  { return npartA_; }
+  const int& npartB() const
+  { return npartB_; }
 
   /// \rst
   /// Multiplicity---or more specifically, total integrated reduced thickness.  May be interpreted
   /// as `dS/d\eta` or `dE/d\eta` at midrapidity.
   /// \endrst
   const double& multiplicity() const
-  { return multiplicity_; }
+  { return dET_detas_[std::floor(nsteps_etas_/2)]; }
+
+
+  const std::vector<double> & dET_detas() const
+  { return dET_detas_; }
 
   /// \rst
   /// Eccentricity harmonics `\varepsilon_n` for *n* = 2--5.
@@ -74,12 +88,15 @@ class Event {
   ///   double e2 = event.eccentricity().at(2);
   ///
   /// \endrst
-  const std::map<int, double>& eccentricity() const
-  { return eccentricity_; }
+  const std::map<int, std::vector<double> > & ecc_mag() const
+  { return ecc_mag_; }
 
-  /// The reduced thickness grid as a square two-dimensional array.
-  const Grid& reduced_thickness_grid() const
-  { return TR_; }
+  const std::map<int, std::vector<double> > & ecc_ang() const
+  { return ecc_ang_; }
+
+  /// Density grid
+  const Grid3D & Density() const
+  { return Density_; }
 
  private:
   /// Compute a nuclear thickness function (TA or TB) onto a grid for a given
@@ -89,46 +106,56 @@ class Event {
       const Nucleus& nucleus, const NucleonCommon& nucleon_common, Grid& TX);
 
   /// Compute the reduced thickness function (TR) after computing TA and TB.
-  /// Template parameter GenMean sets the actual function that returns TR(TA, TB).
-  /// It is determined at runtime based on the configuration.
-  template <typename GenMean>
-  void compute_reduced_thickness(GenMean gen_mean);
+  void compute_density();
 
-  /// An instantation of compute_reduced_thickness<GenMean> with a bound
-  /// argument for GenMean.  Created in the ctor.  Implemented this way to
-  /// allow the compiler to fully inline the GenMean function and only require a
-  /// single "virtual" function call per event.
-  std::function<void()> compute_reduced_thickness_;
-
-  /// Compute observables that require a second pass over the reduced thickness grid.
+  /// Compute observables that require a second pass 
+  /// over the reduced thickness grid.
   void compute_observables();
 
   /// Normalization factor.
-  const double norm_;
+  double norm_trento_, Nab_, shape_gamma_, xloss_;
+  std::shared_ptr<cardinal_cubic_b_spline<double> > interpolator;
 
-  /// Grid step size.
+  const double scaling_p0_;
+  const double deposit_power_, deposit_norm_; 
+  const double mid_power_, mid_norm_; 
+  const double shape_alpha_, shape_beta_;
+  const double kT_min_;
+  const double sqrts_, nucleon_pabs_;
+  const double eta_max_;
+
+  /// Number of grid steps
+  const int nsteps_etas_;  
+  const double detas_;
   const double dxy_;
-
-  /// Number of grid steps.
   const int nsteps_;
-
-  /// Grid xy maximum (half width).
+  /// Grid maximum (half width).
   const double xymax_;
+  
 
-  /// Nuclear thickness grids TA, TB and reduced thickness grid TR.
-  Grid TA_, TB_, TR_;
+  /// Nuclear thickness grids TA, TB;
+  Grid TA_, TB_;
+
+  // 3D grid for matter deposition density
+  Grid3D Density_;
 
   /// Center of mass coordinates in "units" of grid index (not fm).
-  double ixcm_, iycm_;
+  /// as an array of rapidity
+  std::vector<double> ixcm_, iycm_;
 
   /// Number of participants.
-  int npart_;
+  int npart_, npartA_, npartB_;
 
-  /// Multiplicity (total entropy).
-  double multiplicity_;
+  /// Total matter production as an array of rapidity
+  std::vector<double> dET_detas_;
+
+
+
 
   /// Eccentricity harmonics.
-  std::map<int, double> eccentricity_;
+  std::map<int, std::vector<double> > ecc_mag_;
+  /// participant plane angles
+  std::map<int, std::vector<double> > ecc_ang_;
 };
 
 }  // namespace trento
