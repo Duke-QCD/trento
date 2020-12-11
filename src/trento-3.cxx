@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
      "step size [fm]")
     ("nsteps-etas",
      po::value<int>()->value_name("INT")->default_value(1, "1"),
-     "step size [fm]");
+     "number of grid steps in eta");
 
   // Make a meta-group containing all the option groups except the main
   // positional options (don't want the auto-generated usage info for those).
@@ -270,6 +270,9 @@ int main(int argc, char* argv[]) {
     // Cannot fit nucleon width using single constituent if different sizes.
     if ((constituent_width < nucleon_width) && constituent_number == 1)
       throw po::error{"cannot fit nucleon width using single constituent if different sizes"};
+
+    if (var_map["nsteps-etas"].as<int>() <= 0)
+      throw po::error{"nsteps-etas must be positive"};
 
     // Save all the final values into var_map.
     // Exceptions may occur here.

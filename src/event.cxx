@@ -289,25 +289,25 @@ void Event::compute_observables() {
     std::vector<double> im; // imaginary part
     std::vector<double> wt; // weight
     void init(int N){
-         re.reserve(N);
-         im.reserve(N);
-         wt.reserve(N);
+         re.resize(N);
+         im.resize(N);
+         wt.resize(N);
          std::fill(re.begin(), re.end(), 0.);
          std::fill(im.begin(), im.end(), 0.);
          std::fill(wt.begin(), wt.end(), 0.);
     }
     std::vector<double> magnitudes() { 
          std::vector<double> enabs;
-         enabs.reserve(re.size());
-         for (int i=0; i<enabs.size(); i++)
+         enabs.resize(re.size());
+         for (size_t i=0; i<enabs.size(); i++)
              enabs[i] = std::sqrt(re[i]*re[i] + im[i]*im[i]) 
                       / std::fmax(wt[i], TINY);
          return enabs;
     }
     std::vector<double> angles() { 
          std::vector<double> enphi;
-         enphi.reserve(re.size());
-         for (int i=0; i<enphi.size(); i++)
+         enphi.resize(re.size());
+         for (size_t i=0; i<enphi.size(); i++)
              enphi[i] = std::atan2(im[i], re[i]);
          return enphi;
     }
@@ -317,9 +317,9 @@ void Event::compute_observables() {
   e4.init(nsteps_etas_);
   e5.init(nsteps_etas_);
 
-  for (int iz = 0; iz < nsteps_etas_; ++iz){
-    for (int iy = 0; iy < nsteps_; ++iy) {
-      for (int ix = 0; ix < nsteps_; ++ix) {
+  for (size_t iz = 0; iz < nsteps_etas_; ++iz){
+    for (size_t iy = 0; iy < nsteps_; ++iy) {
+      for (size_t ix = 0; ix < nsteps_; ++ix) {
         const auto& t = Density_[iz][iy][ix];
         if (t < TINY)
           continue;
@@ -388,19 +388,19 @@ void Event::compute_observables() {
         e5.wt[iz] += t * r4*r;
       }
     }
-    ecc_mag_[2] = e2.magnitudes();
-    ecc_ang_[2] = e2.angles();
-
-    ecc_mag_[3] = e3.magnitudes();
-    ecc_ang_[3] = e3.angles();
-
-    ecc_mag_[4] = e4.magnitudes();
-    ecc_ang_[4] = e4.angles();
-
-    ecc_mag_[5] = e5.magnitudes();
-    ecc_ang_[5] = e5.angles();
-
   }
+
+  ecc_mag_[2] = e2.magnitudes();
+  ecc_ang_[2] = e2.angles();
+
+  ecc_mag_[3] = e3.magnitudes();
+  ecc_ang_[3] = e3.angles();
+
+  ecc_mag_[4] = e4.magnitudes();
+  ecc_ang_[4] = e4.angles();
+
+  ecc_mag_[5] = e5.magnitudes();
+  ecc_ang_[5] = e5.angles();
 }
 
 }  // namespace trento

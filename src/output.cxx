@@ -31,21 +31,26 @@ void write_stream(std::ostream& os, int width, int num, double impact_param,
 
   // Write a nicely-formatted line of event properties.
   os << setprecision(10)
-     << setw(width)            << num
-     << setw(15) << fixed      << impact_param
-     << setw(5)                << event.npart()
-     << setw(5)                << event.npartA()
-     << setw(5)                << event.npartB();
+     << setw(width)              << num
+     << ' ' << setw(14) << fixed << impact_param
+     << ' ' << setw(4)           << event.npart()
+     << ' ' << setw(4)           << event.npartA()
+     << ' ' << setw(4)           << event.npartB();
 
   // Output ncoll if calculated
-  if (ncoll > 0) os << setw(6) << ncoll;
+  if (ncoll > 0) os << ' ' << setw(5) << ncoll;
 
-  os << setw(18) << scientific << event.multiplicity()
-     << fixed;
+  os << ' ' << setw(17) << scientific << event.multiplicity();
 
-  for (auto & it: event.dET_detas())
-     os << setw(18) << scientific << it
-     << fixed;
+  const auto & detdetas = event.dET_detas();
+  const auto & eccang   = event.ecc_ang();
+
+  for (size_t i = 0; i < detdetas.size(); ++i) {
+    os << scientific << ' ' << setw(17) << detdetas[i] << fixed;
+    for (const auto & itecc : event.ecc_mag()) {
+      os << ' ' << setw(13) << itecc.second[i] << ' ' << setw(13) << eccang.at(itecc.first)[i];
+    }
+  }
 
   //for (const auto& ecc : event.ecc_mag())
   //  os << setw(14)             << ecc.second;
