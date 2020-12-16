@@ -91,7 +91,7 @@ Event::Event(const VarMap& var_map)
   norm_trento_ = mid_norm_ * Mproton * std::pow(sqrts_/Mproton, mid_power_);
   // Fragmentation region normalization
   auto f1 = [this](double x){
-      return std::exp(-x*x/2./this->L_)*std::cosh(x)*std::pow(1.-std::pow(x/this->L_,2),2 );
+      return std::exp(-x*x/2./this->L_)*std::cosh(x)*std::pow(1.-std::pow(x/this->L_,4),2 );
   };
   double F1 = norm_trento_ * trapezoidal(f1, -L_, L_);
   // Energy fraction  needed to be depositied from the fragmentation region
@@ -238,7 +238,7 @@ void Event::compute_density() {
         double TaTb = (ta*(etas>0)+tb*(etas<=0));
         double mid_profile = 
                   std::exp(-std::pow(etas-etacm,2)/2./L_)
-                  * std::pow(1.-std::pow((etas-etacm)/L_, 2), 2) 
+                  * std::pow(1.-std::pow((etas-etacm)/L_, 4), 2) 
                   * (std::abs(etas-etacm)<L_);
         double x = std::abs(2*kT_min_*std::sinh(etas)/sqrts_);
         double fb_profile = std::pow(eta_max_-absetas, shape_alpha_)
