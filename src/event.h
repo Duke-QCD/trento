@@ -113,11 +113,10 @@ class Event {
   void compute_observables();
 
   /// Normalization factor.
-  double norm_trento_, Nab_, shape_gamma_, xloss_;
+  double norm_trento_, Nab_, xloss_, L_, LL_, shape_gamma_, Pplus_, Pminus_;
   std::shared_ptr<cardinal_cubic_b_spline<double> > interpolator;
 
-  const double scaling_p0_;
-  const double deposit_power_, deposit_norm_; 
+  //const double scaling_p0_;
   const double mid_power_, mid_norm_; 
   const double shape_alpha_, shape_beta_;
   const double kT_min_;

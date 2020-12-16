@@ -64,10 +64,7 @@ inline double PandM_to_rap(double pz_over_mT){
 //      does not evenly divide the config max, the actual max will be marginally
 //      larger (by at most one step size).
 Event::Event(const VarMap& var_map)
-    : scaling_p0_(var_map["reduced-thickness"].as<double>()),
-      deposit_power_(var_map["deposit-power"].as<double>()),
-      deposit_norm_(var_map["deposit-norm"].as<double>()),
-      mid_power_(var_map["mid-power"].as<double>()),
+    : mid_power_(var_map["mid-power"].as<double>()),
       mid_norm_(var_map["mid-norm"].as<double>()),
       shape_alpha_(var_map["shape-alpha"].as<double>()),
       shape_beta_(var_map["shape-beta"].as<double>()),
@@ -83,20 +80,33 @@ Event::Event(const VarMap& var_map)
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
       Density_(boost::extents[nsteps_etas_][nsteps_][nsteps_]){
-
-  // sqrts_minimum = 2*Mproton
-  double sqrts_min = 2.*Mproton;
-  // Midrapidity scale
-  norm_trento_ = mid_norm_ * std::pow(sqrts_/sqrts_min, mid_power_);
-  // energy loss fraction
-  xloss_ = deposit_norm_ * std::pow(sqrts_min/sqrts_, deposit_power_);
+  Pplus_ = (sqrts_/2. + nucleon_pabs_)/2.;
+  Pminus_ = (sqrts_/2. - nucleon_pabs_)/2.;
+  // BeamRap width
+  L_ = std::log(sqrts_/kT_min_);
+  //Landau width
+  LL_ = std::sqrt(L_);
+  double sqrt2LL = std::sqrt(2.)*LL_;
+  // Midrapidity norm
+  norm_trento_ = mid_norm_ * Mproton * std::pow(sqrts_/Mproton, mid_power_);
+  // Fragmentation region normalization
+  auto f1 = [this](double x){
+      return std::exp(-x*x/2./this->L_)*std::cosh(x)*std::pow(1.-std::pow(x/this->L_,2),2 );
+  };
+  double F1 = norm_trento_ * trapezoidal(f1, -L_, L_);
+  // Energy fraction  needed to be depositied from the fragmentation region
+  xloss_ = F1/sqrts_;
+  if (xloss_>1) {
+      std::cout << "central fireball too large!" << std::endl;
+      exit(-1);
+  }
   // Fragmentation region normalization
   auto f2 = [this](double x){
-      return std::pow(x, this->shape_beta_)
-            *std::exp(-x*(this->shape_alpha_+1));
+      return std::pow(eta_max_-x, this->shape_alpha_)
+            *std::exp(-(eta_max_-x)*(this->shape_beta_+2.));
   };
   Nab_ = trapezoidal(f2, 0.0, eta_max_);
-  // Cut fragmentation region
+  // Cut fragmentation region using xloss_
   auto low = 0.0, high=100.;
   boost::uintmax_t max_iter = 1000;
   math::tools::eps_tolerance<double> tol{
@@ -106,11 +116,12 @@ Event::Event(const VarMap& var_map)
       auto result = math::tools::toms748_solve(
         [this](double x) {
             auto f3 = [this, x](double y){
-                 return std::pow(y, this->shape_beta_)
-                       *std::exp(-y*(this->shape_alpha_+1))
-                       *std::exp(-std::pow(x*y/this->eta_max_,2));
+                 return std::pow(this->eta_max_-y, this->shape_alpha_)
+                       *std::exp(-(this->eta_max_-y)*(this->shape_beta_+2.)
+                       -x*std::pow(this->eta_max_-y,2.) 
+                       );
                 };
-        return trapezoidal(f3, 0.0, eta_max_)/this->Nab_ - this->xloss_;
+        return 1.-trapezoidal(f3, 0.0, eta_max_)/this->Nab_ - this->xloss_;
       },
       low, high, tol, max_iter
       );
@@ -121,29 +132,7 @@ Event::Event(const VarMap& var_map)
                << ", sqrts = " << sqrts_<<std::endl;
     throw std::domain_error{"unable to fit shape-gamma?"};
   }
-  // table that converts mid-rapidity norm, total energy depsotion
-  // to the half width of the Gaussian distribution
-  std::vector<double> root;
-  for (double rhs=-10; rhs<10; rhs+=.1){
-      try {
-          auto result = math::tools::toms748_solve(
-              [this, rhs](double x) {
-                return .5*x+.5*std::log(x)-rhs;
-          },
-          1e-15, 1e15, tol, max_iter
-          );
-          root.push_back(.5*(result.first + result.second));
-      }     
-      catch (const std::domain_error&) {
-          std::cout << "rhs = " << rhs<<std::endl;
-          throw std::domain_error{"unable to fit half width?"};
-      }
-      
-   }
-   interpolator = std::make_shared<cardinal_cubic_b_spline<double> >(
-                root.begin(), root.end(),
-                -10., .1
-                 );
+  //std::cout << xloss_ << " " << shape_gamma_ << std::endl;
 }
 
 void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
@@ -240,25 +229,27 @@ void Event::compute_density() {
       double ta = TA_[iy][ix];
       double tb = TB_[iy][ix];
       if (ta<TINY || tb<TINY) continue;
-      double TR = pmean(scaling_p0_, ta, tb);
-      double Ecenter =xloss_*sqrts_*std::sqrt(ta*tb);
-      double L = (*interpolator)(std::log(
-                  Ecenter/(std::sqrt(2.*M_PI)*norm_trento_*TR) )
-                  );
-      //std::cout<<std::log(
-      //            Ecenter/(std::sqrt(2.*M_PI)*norm_trento_*TR) ) << " ";
-      double ScaleF = ta*kT_min_;
-      double ScaleB = tb*kT_min_;
+      double TR = pmean(0., ta, tb);
+      double etacm = .5*std::log((ta*Pplus_+tb*Pminus_)
+                                /(tb*Pplus_+ta*Pminus_));
       for (int iz = 0; iz < nsteps_etas_; ++iz) {
-        double etas = -eta_max_ + (iz+.5) * detas_;   
-        double TaTb = (ScaleF*(etas>0)+ScaleB*(etas<=0));
-        double mid_profile = std::exp(-.5*std::pow(etas,2)/L);
+        double etas = -eta_max_ + (iz+.5) * detas_; 
+        double absetas = std::abs(etas);
+        double TaTb = (ta*(etas>0)+tb*(etas<=0));
+        double mid_profile = 
+                  std::exp(-std::pow(etas-etacm,2)/2./L_)
+                  * std::pow(1.-std::pow((etas-etacm)/L_, 2), 2) 
+                  * (std::abs(etas-etacm)<L_);
         double x = std::abs(2*kT_min_*std::sinh(etas)/sqrts_);
-        double fb_profile = std::pow(x,shape_alpha_)
-         * std::pow(eta_max_-std::abs(etas), shape_beta_)/Nab_
+        double fb_profile = std::pow(eta_max_-absetas, shape_alpha_)
+                        *std::exp(
+                            - (shape_beta_+1.) * (eta_max_-absetas)
+                            - shape_gamma_*std::pow(eta_max_-absetas,2)
+                         )   
+                        /Nab_
          *(1.-std::exp(-std::pow(shape_gamma_*std::abs(etas)/eta_max_,2)));
          Density_[iz][iy][ix] = TR*norm_trento_*mid_profile
-                             + TaTb*fb_profile;
+                             + TaTb*kT_min_*fb_profile;
       }
     }
   }
