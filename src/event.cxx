@@ -91,11 +91,11 @@ Event::Event(const VarMap& var_map)
   norm_trento_ = mid_norm_ * Mproton * std::pow(sqrts_/Mproton, mid_power_);
   // Fragmentation region normalization
   auto f1 = [this](double x){
-      return std::exp(-x*x/2./this->L_)*std::cosh(x)*std::pow(1.-std::pow(x/this->L_,4),2 );
+      return std::exp(-x*x/2./this->L_)*std::cosh(x)*std::pow(1.-std::pow(x/this->L_, 4), 4);
   };
   double F1 = norm_trento_ * trapezoidal(f1, -L_, L_);
   // Energy fraction  needed to be depositied from the fragmentation region
-  xloss_ = F1/sqrts_;
+  xloss_ = F1/sqrts_; 
   if (xloss_>1) {
       std::cout << "central fireball too large!" << std::endl;
       exit(-1);
@@ -117,8 +117,7 @@ Event::Event(const VarMap& var_map)
         [this](double x) {
             auto f3 = [this, x](double y){
                  return std::pow(this->eta_max_-y, this->shape_alpha_)
-                       *std::exp(-(this->eta_max_-y)*(this->shape_beta_+2.)
-                       -x*std::pow(this->eta_max_-y,2.) 
+                       *std::exp(-(this->eta_max_-y)*(this->shape_beta_+2.+x)
                        );
                 };
         return 1.-trapezoidal(f3, 0.0, eta_max_)/this->Nab_ - this->xloss_;
@@ -228,7 +227,7 @@ void Event::compute_density() {
     for (int ix = 0; ix < nsteps_; ++ix) {
       double ta = TA_[iy][ix];
       double tb = TB_[iy][ix];
-      if (ta<TINY || tb<TINY) continue;
+      if (ta<TINY && tb<TINY) continue;
       double TR = pmean(0., ta, tb);
       double etacm = .5*std::log((ta*Pplus_+tb*Pminus_)
                                 /(tb*Pplus_+ta*Pminus_));
@@ -238,17 +237,15 @@ void Event::compute_density() {
         double TaTb = (ta*(etas>0)+tb*(etas<=0));
         double mid_profile = 
                   std::exp(-std::pow(etas-etacm,2)/2./L_)
-                  * std::pow(1.-std::pow((etas-etacm)/L_, 4), 2) 
+                  * std::pow(1.-std::pow((etas-etacm)/L_, 4), 4) 
                   * (std::abs(etas-etacm)<L_);
         double x = std::abs(2*kT_min_*std::sinh(etas)/sqrts_);
-        double fb_profile = std::pow(eta_max_-absetas, shape_alpha_)
-                        *std::exp(
-                            - (shape_beta_+1.) * (eta_max_-absetas)
-                            - shape_gamma_*std::pow(eta_max_-absetas,2)
-                         )   
-                        /Nab_
-         *(1.-std::exp(-std::pow(shape_gamma_*std::abs(etas)/eta_max_,2)));
-         Density_[iz][iy][ix] = TR*norm_trento_*mid_profile
+        double fb_profile = 0.;
+        if (std::abs(x)>1e-9){
+            fb_profile = std::pow(-std::log(x), shape_alpha_)
+                       * std::pow(x, shape_gamma_+shape_beta_+1.)/Nab_;
+        }
+        Density_[iz][iy][ix] = TR*norm_trento_*mid_profile
                              + TaTb*kT_min_*fb_profile;
       }
     }
@@ -279,13 +276,15 @@ void Event::compute_observables() {
     std::vector<double> re; // real part
     std::vector<double> im; // imaginary part
     std::vector<double> wt; // weight
-    void init(int N){
+    int order;
+    void init(int N, int order_){
          re.resize(N);
          im.resize(N);
          wt.resize(N);
          std::fill(re.begin(), re.end(), 0.);
          std::fill(im.begin(), im.end(), 0.);
          std::fill(wt.begin(), wt.end(), 0.);
+         order = order_;
     }
     std::vector<double> magnitudes() { 
          std::vector<double> enabs;
@@ -299,14 +298,14 @@ void Event::compute_observables() {
          std::vector<double> enphi;
          enphi.resize(re.size());
          for (size_t i=0; i<enphi.size(); i++)
-             enphi[i] = std::atan2(im[i], re[i]);
+             enphi[i] = std::atan2(im[i], re[i])/order;
          return enphi;
     }
   } e2, e3, e4, e5;
-  e2.init(nsteps_etas_);
-  e3.init(nsteps_etas_);
-  e4.init(nsteps_etas_);
-  e5.init(nsteps_etas_);
+  e2.init(nsteps_etas_,2);
+  e3.init(nsteps_etas_,3);
+  e4.init(nsteps_etas_,4);
+  e5.init(nsteps_etas_,5);
 
   for (size_t iz = 0; iz < nsteps_etas_; ++iz){
     for (size_t iy = 0; iy < nsteps_; ++iy) {
