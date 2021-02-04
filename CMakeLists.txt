@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.4)
 project(trento-3 VERSION 2.0 LANGUAGES CXX)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 
 # require C++11
 set(CMAKE_CXX_STANDARD 11)
@@ -18,8 +19,15 @@ endif()
 
 
 # Find and use Boost.
-find_package(Boost 1.72 REQUIRED COMPONENTS filesystem program_options system)
+find_package(Boost 1.71 REQUIRED COMPONENTS filesystem program_options system)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+
+# Find FFTW for generating Gaussian random field
+#find_package(FFTW)
+#if (${FFTW_FOUND})
+#  include_directories(${FFTW_INCLUDE_DIR})
+#  Message(STATUS "FastJet Include dir : " ${FFTW_INCLUDE_DIR})
+#endif()
 
 # Find the HDF5 C++ library.  The CMake FindHDF5 module does not work reliably,
 # e.g. sometimes it links unnecessary libraries, other times it fails to include

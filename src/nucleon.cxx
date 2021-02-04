@@ -20,7 +20,9 @@
 #include <boost/program_options/variables_map.hpp>
 #include <boost/math/special_functions/erf.hpp>
 #include <boost/filesystem.hpp>
-
+#include <boost/math/quadrature/trapezoidal.hpp>
+#include "boost/random.hpp"
+using boost::math::quadrature::trapezoidal;
 
 #include "fwd_decl.h"
 
@@ -263,9 +265,35 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
       sigma_partonic_(partonic_cross_section(var_map)),
       prefactor_(math::double_constants::one_div_two_pi/constituent_width_sq_/constituent_number_),
       calc_ncoll_(var_map["ncoll"].as<bool>()),
-      //participant_fluctuation_dist_(gamma_param_unit_mean(var_map["fluctuation"].as<double>())),
-      constituent_position_dist_(0, sampling_width_)
-{}
+      constituent_position_dist_(0, sampling_width_),
+      rng(var_map["random-seed"].as<int64_t>()){
+    double Mproton = 0.938;
+    double sqrts = var_map["sqrts"].as<double>();
+    double eta_max = std::log(sqrts/var_map["kT-min"].as<double>());
+    double L_ = std::log(sqrts/0.2);
+    double mid_power = var_map["mid-power"].as<double>();
+    double mid_norm = var_map["mid-norm"].as<double>();
+    double var = var_map["fluctuation"].as<double>();
+    double norm_trento = mid_norm * Mproton * std::pow(sqrts/Mproton, mid_power);
+    auto f1 = [eta_max,L_](double x){
+        return std::exp(-x*x/2./L_)*std::cosh(x)*std::pow(1.-std::pow(x/eta_max, 4), 2);
+    };
+    double F1 = norm_trento * trapezoidal(f1, -eta_max, eta_max);
+    // Average energy fraction  needed to be depositied from the fragmentation region
+    avg_xloss_ = std::sqrt(F1/sqrts); 
+    if (avg_xloss_>1) {
+        std::cout << "central fireball too large!" << std::endl;
+        exit(-1);
+    }
+    var = var*(1-avg_xloss_)/avg_xloss_;
+    double a = (1.-avg_xloss_)/var - avg_xloss_;
+    double b = a/avg_xloss_ - a;
+    if (a<0 ) {
+        std::cout << "Fluctuation too large" << std::endl;
+        exit(-1);
+    }
+    constituent_xloss_dist_ = boost::random::beta_distribution<>(a, b);
+}
 
 MonteCarloCrossSection::MonteCarloCrossSection(const VarMap& var_map)
   : nucleon_width_(var_map["nucleon-width"].as<double>()),

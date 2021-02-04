@@ -9,7 +9,8 @@
 #include <vector>
 
 #include <boost/math/constants/constants.hpp>
-
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/beta_distribution.hpp>
 #include "fast_exp.h"
 #include "fwd_decl.h"
 #include "random.h"
@@ -66,7 +67,8 @@ class NucleonData {
   /// Constituent transverse position and fluctuation prefactor.
   struct Constituent {
     double x, y;
-    double fluctuation;
+    double frac_mid;
+    double frac_forward;
   };
 
   /// Vector of constituent positions and fluctuation prefactors.
@@ -89,13 +91,18 @@ class NucleonCommon {
   /// Corners of the tile enclosing the nucleon thickness.
   std::array<double, 4> boundary(const NucleonData& nucleon) const;
 
-  /// Nucleon thickness as a function of transverse position.
+  /// Nucleon thickness as a function of transverse position, at mid-rapidity
   double thickness(const NucleonData& nucleon, double x, double y) const;
+
+  /// Nucleon thickness as a function of transverse position, at forward rapidity
+  double fragmentation(const NucleonData& nucleon, double x, double y) const;
 
   /// Randomly determine if a pair of nucleons participates.
   bool participate(NucleonData& A, NucleonData& B) const;
+  double avg_xloss() const {return avg_xloss_;};
 
  private:
+  double avg_xloss_;
   /// Sample constituent positions inside the nucleon.
   void sample_constituent_positions(NucleonData& nucleon) const;
 
@@ -135,12 +142,11 @@ class NucleonCommon {
   /// Tracks binary collisions if true
   const bool calc_ncoll_;
 
-  /// Gamma random variables used to weight each nucleon (or constituent)
-  /// contribution. Controlled by the fluctuation parameter.
-  //mutable std::gamma_distribution<double> participant_fluctuation_dist_;
-
   /// Gaussian distribution for sampling constituent positions.
   mutable std::normal_distribution<double> constituent_position_dist_;
+
+  mutable boost::random::mt19937 rng;
+  mutable boost::random::beta_distribution<> constituent_xloss_dist_;
 
 };
 
@@ -225,10 +231,24 @@ inline double NucleonCommon::thickness(
   auto t = 0.;
 
   for (const auto& constituent : nucleon.constituents_) {
-    auto fluct = constituent.fluctuation;
+    auto frac = constituent.frac_mid;
     auto distance_sq = sqr(x - constituent.x) + sqr(y - constituent.y);
     if (distance_sq < constituent_radius_sq_)
-      t += fluct * fast_exp_(-.5*distance_sq/constituent_width_sq_);
+      t += frac * fast_exp_(-.5*distance_sq/constituent_width_sq_);
+  }
+
+  return prefactor_ * t;
+}
+
+inline double NucleonCommon::fragmentation(
+    const NucleonData& nucleon, double x, double y) const {
+  auto t = 0.;
+
+  for (const auto& constituent : nucleon.constituents_) {
+    auto frac = constituent.frac_forward;
+    auto distance_sq = sqr(x - constituent.x) + sqr(y - constituent.y);
+    if (distance_sq < constituent_radius_sq_)
+      t += frac * fast_exp_(-.5*distance_sq/constituent_width_sq_);
   }
 
   return prefactor_ * t;
@@ -290,13 +310,16 @@ inline void NucleonCommon::sample_constituent_positions(NucleonData& nucleon) co
   double ycom = 0.0;
 
   // Sample nucleon constituent positions
+  double overall_fluct = constituent_xloss_dist_(random::engine);
   for (auto&& constituent : nucleon.constituents_) {
     auto xloc = constituent_position_dist_(random::engine);
     auto yloc = constituent_position_dist_(random::engine);
 
     constituent.x = xloc;
     constituent.y = yloc;
-    constituent.fluctuation = 1.0;
+    double sqrtfraction =  overall_fluct;
+    constituent.frac_mid = sqrtfraction*sqrtfraction;
+    constituent.frac_forward = 1. - constituent.frac_mid;
 
     xcom += xloc;
     ycom += yloc;

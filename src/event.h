@@ -16,6 +16,7 @@
 using boost::math::interpolators::cardinal_cubic_b_spline;
 
 #include "fwd_decl.h"
+//#include "random_field.h"
 
 namespace trento {
 
@@ -98,12 +99,28 @@ class Event {
   const Grid3D & Density() const
   { return Density_; }
 
+  double central_profile(double eta) const{
+     if (std::abs(eta)>eta_max_) return 0.; 
+     double u = eta*eta/2./eta_grid_max_;
+     return std::exp(-std::pow(u, flatness_))
+           *std::pow(1.-std::pow(eta/eta_max_, 4), 2);
+  }
+  double center_of_mass_eta(double ta, double tb) const{
+     return .5*std::log((ta*Pplus_+tb*Pminus_)
+                       /(tb*Pplus_+ta*Pminus_));
+  }
+  double frag_profile(double x) const{
+     return std::pow(-std::log(x), shape_alpha_)
+          * std::pow(x, shape_beta_+1)/Nfrag_;
+  }
+
  private:
   /// Compute a nuclear thickness function (TA or TB) onto a grid for a given
   /// nucleus and nucleon profile.  This destroys any data previously contained
   /// by the grid.
   void compute_nuclear_thickness(
-      const Nucleus& nucleus, const NucleonCommon& nucleon_common, Grid& TX);
+      const Nucleus& nucleus, const NucleonCommon& nucleon_common, 
+                   Grid& TX, Grid& FX);
 
   /// Compute the reduced thickness function (TR) after computing TA and TB.
   void compute_density();
@@ -113,27 +130,26 @@ class Event {
   void compute_observables();
 
   /// Normalization factor.
-  double norm_trento_, Nab_, xloss_, L_, LL_, shape_gamma_, Pplus_, Pminus_;
-  std::shared_ptr<cardinal_cubic_b_spline<double> > interpolator;
+  double norm_trento_, Nfrag_, xloss_, Pplus_, Pminus_;
 
   //const double scaling_p0_;
-  const double mid_power_, mid_norm_; 
+  const double mid_power_, mid_norm_, flatness_; 
   const double shape_alpha_, shape_beta_;
   const double kT_min_;
   const double sqrts_, nucleon_pabs_;
-  const double eta_max_;
+  const double eta_max_, eta_grid_max_;
 
   /// Number of grid steps
   const int nsteps_etas_;  
   const double detas_;
   const double dxy_;
   const int nsteps_;
+
   /// Grid maximum (half width).
   const double xymax_;
   
-
   /// Nuclear thickness grids TA, TB;
-  Grid TA_, TB_;
+  Grid TA_, TB_, FA_, FB_;
 
   // 3D grid for matter deposition density
   Grid3D Density_;
@@ -147,9 +163,6 @@ class Event {
 
   /// Total matter production as an array of rapidity
   std::vector<double> dET_detas_;
-
-
-
 
   /// Eccentricity harmonics.
   std::map<int, std::vector<double> > ecc_mag_;

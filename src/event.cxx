@@ -2,20 +2,16 @@
 // Copyright 2015 Jonah E. Bernhard, J. Scott Moreland
 // MIT License
 
-#include "event.h"
 
 #include <algorithm>
 #include <cmath>
-
 #include <boost/program_options/variables_map.hpp>
-#include "nucleus.h"
-#include <boost/math/special_functions/gamma.hpp>
-#include <boost/math/special_functions/beta.hpp>
-#include <boost/math/special_functions/hypergeometric_1F1.hpp>
-#include <boost/math/special_functions/erf.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <boost/math/tools/roots.hpp>
 #include <boost/math/quadrature/trapezoidal.hpp>
+#include "event.h"
+#include "nucleus.h"
+
 using boost::math::quadrature::trapezoidal;
 
 namespace trento {
@@ -37,23 +33,6 @@ double pmean(double p, double a, double b) {
     }
   }
 }
-
-
-
-inline double EoverM_to_absrap(double p0_over_mT){
-    if (p0_over_mT<=1.) return 0.;
-    else return std::log( p0_over_mT + std::sqrt(std::pow(p0_over_mT,2)-1.) );
-}
-
-inline double EandP_to_absrap(double E, double P){
-    if (E<(1.+TINY)*P) return 0.;
-    else return .5*std::log((E+P)/(E-P));
-}
-
-inline double PandM_to_rap(double pz_over_mT){
-    return std::log(std::sqrt(std::pow(pz_over_mT,2)+1.) + pz_over_mT);
-}
-
 }  // unnamed namespace
 
 // Determine the grid parameters like so:
@@ -66,75 +45,60 @@ inline double PandM_to_rap(double pz_over_mT){
 Event::Event(const VarMap& var_map)
     : mid_power_(var_map["mid-power"].as<double>()),
       mid_norm_(var_map["mid-norm"].as<double>()),
+      flatness_(var_map["flatness"].as<double>()),
       shape_alpha_(var_map["shape-alpha"].as<double>()),
       shape_beta_(var_map["shape-beta"].as<double>()),
       kT_min_(var_map["kT-min"].as<double>()),
       sqrts_(var_map["sqrts"].as<double>()),
       nucleon_pabs_(std::sqrt(.25*sqrts_*sqrts_ - Mproton*Mproton)),
-      eta_max_( std::asinh(.5*sqrts_/kT_min_) ),
+      // eta_max_(sqrts, kTmin) is the physically kinetiac range considered
+      eta_max_( std::asinh(.5*sqrts_/kT_min_) ),  
+      // eta_grid_max_(sqrts) is the range of the computing grid
+      // it also has a physical meaning though
+      eta_grid_max_( std::asinh(.5*sqrts_/0.2) ),
       nsteps_etas_(var_map["nsteps-etas"].as<int>()),
-      detas_(2.*eta_max_/nsteps_etas_),
+      detas_(2.*eta_grid_max_/nsteps_etas_),
       dxy_(var_map["grid-step"].as<double>()),
       nsteps_(std::ceil(2.*var_map["grid-max"].as<double>()/dxy_)),
       xymax_(.5*nsteps_*dxy_),
+      // Thickness function to deposite into the middle fireball
       TA_(boost::extents[nsteps_][nsteps_]),
       TB_(boost::extents[nsteps_][nsteps_]),
-      Density_(boost::extents[nsteps_etas_][nsteps_][nsteps_]){
+      // Thickness function fragments at large x
+      FA_(boost::extents[nsteps_][nsteps_]),
+      FB_(boost::extents[nsteps_][nsteps_]),
+      // 3D initial energy density at tau=0+
+      Density_(boost::extents[nsteps_etas_][nsteps_][nsteps_])
+  {
+  // light-cone moemtnum compoents of the projectile (per nucleon)
+  // P+ = (E+|Pz|)/2 = (sqrts/2.+pabs)/2. = Mproton * exp(ybeam)
   Pplus_ = (sqrts_/2. + nucleon_pabs_)/2.;
+  // P- = (E-|Pz|)/2 = (sqrts/2.-pabs)/2. = Mproton * exp(-ybeam)
   Pminus_ = (sqrts_/2. - nucleon_pabs_)/2.;
-  // BeamRap width
-  L_ = std::log(sqrts_/kT_min_);
-  //Landau width
-  LL_ = std::sqrt(L_);
-  double sqrt2LL = std::sqrt(2.)*LL_;
   // Midrapidity norm
   norm_trento_ = mid_norm_ * Mproton * std::pow(sqrts_/Mproton, mid_power_);
-  // Fragmentation region normalization
-  auto f1 = [this](double x){
-      return std::exp(-x*x/2./this->L_)*std::cosh(x)*std::pow(1.-std::pow(x/this->L_, 4), 4);
+  // Compute central fireball normalization Ncentral
+  auto f1 = [this](double eta){
+      return this->central_profile(eta)*std::cosh(eta);
   };
-  double F1 = norm_trento_ * trapezoidal(f1, -L_, L_);
-  // Energy fraction  needed to be depositied from the fragmentation region
-  xloss_ = F1/sqrts_; 
-  if (xloss_>1) {
+  double Ncentral = norm_trento_ * trapezoidal(f1, -eta_max_, eta_max_);
+  // Energy fraction of the projectile/target to be deposited in 
+  // the central fireball, cannot be larger than one!
+  xloss_ = Ncentral/sqrts_; 
+  if (xloss_>1.-TINY) {
       std::cout << "central fireball too large!" << std::endl;
       exit(-1);
   }
-  // Fragmentation region normalization
+  // Normalziation for the fragmentation region, Nfrag_
   auto f2 = [this](double x){
       return std::pow(eta_max_-x, this->shape_alpha_)
             *std::exp(-(eta_max_-x)*(this->shape_beta_+2.));
   };
-  Nab_ = trapezoidal(f2, 0.0, eta_max_);
-  // Cut fragmentation region using xloss_
-  auto low = 0.0, high=100.;
-  boost::uintmax_t max_iter = 1000;
-  math::tools::eps_tolerance<double> tol{
-     (std::numeric_limits<double>::digits * 3) / 4
-  };
-  try {
-      auto result = math::tools::toms748_solve(
-        [this](double x) {
-            auto f3 = [this, x](double y){
-                 return std::pow(this->eta_max_-y, this->shape_alpha_)
-                       *std::exp(-(this->eta_max_-y)*(this->shape_beta_+2.+x)
-                       );
-                };
-        return 1.-trapezoidal(f3, 0.0, eta_max_)/this->Nab_ - this->xloss_;
-      },
-      low, high, tol, max_iter
-      );
-      shape_gamma_ = .5*(result.first + result.second);
-  }
-  catch (const std::domain_error&) {
-     std::cout << "gamma = " << shape_gamma_
-               << ", sqrts = " << sqrts_<<std::endl;
-    throw std::domain_error{"unable to fit shape-gamma?"};
-  }
-  //std::cout << xloss_ << " " << shape_gamma_ << std::endl;
+  Nfrag_ = trapezoidal(f2, -eta_max_, eta_max_);
 }
 
-void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
+void Event::compute(const Nucleus& nucleusA, 
+                    const Nucleus& nucleusB,
                     const NucleonCommon& nucleon_common) {
   // Reset npart; compute_nuclear_thickness() increments it.
   npart_ = 0;
@@ -159,9 +123,15 @@ void Event::compute(const Nucleus& nucleusA, const Nucleus& nucleusB,
         npart_++;
     }
   }
-  compute_nuclear_thickness(nucleusA, nucleon_common, TA_);
-  compute_nuclear_thickness(nucleusB, nucleon_common, TB_);
+  // compute and decompose thickness function into two parts
+  // Toriginal = T_ + F_
+  // T_: the fraction to be deposited into central fireball
+  // F_: the fraction remained at large x limiting fragmentation region
+  compute_nuclear_thickness(nucleusA, nucleon_common, TA_, FA_);
+  compute_nuclear_thickness(nucleusB, nucleon_common, TB_, FB_);
+  // compute 3D energy density using TA, TB, FA, FB
   compute_density();
+  // compute eccentricity 
   compute_observables();
 }
 
@@ -182,7 +152,8 @@ inline const T& clip(const T& value, const T& min, const T& max) {
 
 
 void Event::compute_nuclear_thickness(
-    const Nucleus& nucleus, const NucleonCommon& nucleon_common, Grid& TX) {
+    const Nucleus& nucleus, const NucleonCommon& nucleon_common, 
+    Grid& TX, Grid& FX) {
   // Construct the thickness grid by looping over participants and adding each
   // to a small subgrid within its radius.  Compared to the other possibility
   // (grid cells as the outer loop and participants as the inner loop), this
@@ -192,6 +163,8 @@ void Event::compute_nuclear_thickness(
 
   // Wipe grid with zeros.
   std::fill(TX.origin(), TX.origin() + TX.num_elements(), 0.);
+  std::fill(FX.origin(), FX.origin() + FX.num_elements(), 0.);
+
 
   // Deposit each participant onto the grid.
   for (const auto& nucleon : nucleus) {
@@ -213,6 +186,9 @@ void Event::compute_nuclear_thickness(
         TX[iy][ix] += nucleon_common.thickness(
           nucleon, (ix+.5)*dxy_ - xymax_, (iy+.5)*dxy_ - xymax_
         );
+        FX[iy][ix] += nucleon_common.fragmentation(
+          nucleon, (ix+.5)*dxy_ - xymax_, (iy+.5)*dxy_ - xymax_
+        );
       }
     }
   }
@@ -221,32 +197,24 @@ void Event::compute_nuclear_thickness(
 
 
 void Event::compute_density() {
-  std::fill(Density_.origin(), Density_.origin()+Density_.num_elements(), 0.);  
+  std::fill(Density_.origin(), 
+            Density_.origin()+Density_.num_elements(), 0.);  
 
   for (int iy = 0; iy < nsteps_; ++iy) {
     for (int ix = 0; ix < nsteps_; ++ix) {
-      double ta = TA_[iy][ix];
-      double tb = TB_[iy][ix];
-      if (ta<TINY && tb<TINY) continue;
-      double TR = pmean(0., ta, tb);
-      double etacm = .5*std::log((ta*Pplus_+tb*Pminus_)
-                                /(tb*Pplus_+ta*Pminus_));
+      double ta = TA_[iy][ix], fa = FA_[iy][ix];
+      double tb = TB_[iy][ix], fb = FB_[iy][ix];
+      if (ta<TINY && tb<TINY && fa < TINY && fb < TINY) continue;
+      double TR = pmean(0., ta, tb)/xloss_;
+      double etacm = center_of_mass_eta(ta, tb);
       for (int iz = 0; iz < nsteps_etas_; ++iz) {
-        double etas = -eta_max_ + (iz+.5) * detas_; 
-        double absetas = std::abs(etas);
-        double TaTb = (ta*(etas>0)+tb*(etas<=0));
-        double mid_profile = 
-                  std::exp(-std::pow(etas-etacm,2)/2./L_)
-                  * std::pow(1.-std::pow((etas-etacm)/L_, 4), 4) 
-                  * (std::abs(etas-etacm)<L_);
-        double x = std::abs(2*kT_min_*std::sinh(etas)/sqrts_);
-        double fb_profile = 0.;
-        if (std::abs(x)>1e-9){
-            fb_profile = std::pow(-std::log(x), shape_alpha_)
-                       * std::pow(x, shape_gamma_+shape_beta_+1.)/Nab_;
-        }
-        Density_[iz][iy][ix] = TR*norm_trento_*mid_profile
-                             + TaTb*kT_min_*fb_profile;
+        double etas = - eta_grid_max_ + (iz+.5) * detas_; 
+        double e_central = (std::abs(etas-etacm)<eta_grid_max_)? 
+                (norm_trento_*TR*central_profile(etas-etacm)) : 0.;
+        double xA = std::min(std::max(std::exp(-eta_max_+etas), TINY),1.);
+        double xB = std::min(std::max(std::exp(-eta_max_-etas), TINY),1.);
+        double e_fb = kT_min_*(ta*frag_profile(xA) + tb*frag_profile(xB));
+        Density_[iz][iy][ix] = e_central + e_fb;
       }
     }
   }
@@ -257,13 +225,13 @@ void Event::compute_density() {
       for (int ix = 0; ix < nsteps_; ++ix) {
         double dE = Density_[iz][iy][ix];
         if (dE<TINY) continue;
-        ixcm_[iz] += dxy_*ix*dE;
-        iycm_[iz] += dxy_*iy*dE;
+        ixcm_[iz] += ix*dE;
+        iycm_[iz] += iy*dE;
         sum += dE;
       }
     }
-    ixcm_[iz] /= sum;
-    iycm_[iz] /= sum;
+    ixcm_[iz] *= dxy_/sum;
+    iycm_[iz] *= dxy_/sum;
     dET_detas_[iz] = sum * dxy_ * dxy_;
   }
 }

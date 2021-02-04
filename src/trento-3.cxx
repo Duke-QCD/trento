@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     // Nulcear configuration parameters
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
-     "Gaussian nucleon width [fm]")
+     "Gaussian nucleon width [fm] (0.35, 1.4)")
     ("constit-width,v",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "same"),
      "Gaussian constituent width [fm]")
@@ -123,47 +123,39 @@ int main(int argc, char* argv[]) {
     ("nucleon-min-dist,d",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum nucleon-nucleon distance [fm]")
-    ("fluctuation,k",
-     po::value<double>()->value_name("FLOAT")->default_value(1., "1"),
-     "gamma fluctuation shape parameter")
-    // Impact parameter cuts
     ("b-min",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0"),
      "minimum impact parameter [fm]")
     ("b-max",
      po::value<double>()->value_name("FLOAT")->default_value(-1., "auto"),
      "maximum impact parameter [fm]")
-    // Collision and kinetic parameters
     ("sqrts,s",
      po::value<double>()->value_name("FLOAT")->default_value(2760., "2760."),
-     "CoM energy of collision [GeV], also determines cross-section")
+     "CoM energy of collision [GeV], determines cross-section, ybeam, etc")
+    ("fluctuation,k",
+     po::value<double>()->value_name("FLOAT")->default_value(0.3, "0.3"),
+     "fluctuation of energy sharing of central and forward fireball (0.1, 0.6)")
     ("kT-min,t",
-     po::value<double>()->value_name("FLOAT")->default_value(.3, ".3"),
-     "Minimum transverse kinematic cut, used to determine eta-max [GeV]")
-    // Energy production parameters:
-    //   --- Ta Tb scaling parameters: p, a
+     po::value<double>()->value_name("FLOAT")->default_value(.4, ".4"),
+     "eta_max ~ ln(sqrts/kT-min) [GeV], (0.2, 1.0)")
     ("reduced-thickness,p",
      po::value<double>()->value_name("FLOAT")->default_value(0., "0."),
-     "reduced thickness parameter (trento p at eta=0)")
-    //   --- rapidity shape parameters: a, b, g
+     "reduced thickness parameter, !!currently set to 0 internally!!")
     ("shape-alpha",
-     po::value<double>()->value_name("FLOAT")->default_value(2., "2."),
-     "fragmentation region shape parameter: alpha")
+     po::value<double>()->value_name("FLOAT")->default_value(4., "4."),
+     "fragmentation region a: [-ln(x)]^a x^b, (3, 5)")
     ("shape-beta",
-     po::value<double>()->value_name("FLOAT")->default_value(1.5, "1.5"),
-     "fragmentation region shape parameter: beta")
-    ("deposit-power",
-     po::value<double>()->value_name("FLOAT")->default_value(0, "0"),
-     "power of energy deposition")
-    ("deposit-norm",
-     po::value<double>()->value_name("FLOAT")->default_value(1, "1"),
-     "norm of energy deposition")
+     po::value<double>()->value_name("FLOAT")->default_value(.5, ".5"),
+     "fragmentation region b: [-ln(x)]^a x^b, (0.2, 1.0)")
     ("mid-power",
-     po::value<double>()->value_name("FLOAT")->default_value(0.5, "0.5"),
-     "power of energy deposition")
+     po::value<double>()->value_name("FLOAT")->default_value(0.4, "0.4"),
+     "power of ETmid ~ #1*sqrts^#2, (0.3, 0.48)")
     ("mid-norm",
-     po::value<double>()->value_name("FLOAT")->default_value(1, "1"),
-     "norm of energy deposition");
+     po::value<double>()->value_name("FLOAT")->default_value(.3, ".3"),
+     "norm of ETmid ~ #1*sqrts^#2, (0.2, 0.45)")
+    ("flatness",
+     po::value<double>()->value_name("FLOAT")->default_value(1.5, "1.5"),
+     "flatness parameter of the central plateau, (1.0, 1.5)");
 
   OptDesc grid_opts{"grid options"};
   grid_opts.add_options()
