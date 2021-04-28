@@ -52,10 +52,10 @@ Event::Event(const VarMap& var_map)
       sqrts_(var_map["sqrts"].as<double>()),
       nucleon_pabs_(std::sqrt(.25*sqrts_*sqrts_ - Mproton*Mproton)),
       // eta_max_(sqrts, kTmin) is the physically kinetiac range considered
-      eta_max_( std::asinh(.5*sqrts_/kT_min_) ),  
+      eta_max_( std::acosh(.5*sqrts_/kT_min_) ),
       // eta_grid_max_(sqrts) is the range of the computing grid
       // it also has a physical meaning though
-      eta_grid_max_( std::asinh(.5*sqrts_/0.2) ),
+      eta_grid_max_( std::acosh(.5*sqrts_/0.2) ),
       nsteps_etas_(var_map["nsteps-etas"].as<int>()),
       detas_(2.*eta_grid_max_/nsteps_etas_),
       dxy_(var_map["grid-step"].as<double>()),
