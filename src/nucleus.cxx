@@ -33,8 +33,8 @@ NucleusPtr Nucleus::create(const std::string& species, double nucleon_dmin) {
   else if (species == "d")
     return NucleusPtr{new Deuteron{}};
   else if (species == "Al")
-    return NucleusPtr{new WoodsSaxonNucleus{
-       27, 3., 0.6, nucleon_dmin
+    return NucleusPtr{new DeformedWoodsSaxonNucleus{
+       27, 3.34, 0.580, -0.448, 0.239, nucleon_dmin
     }};
   else if (species == "Cu")
     return NucleusPtr{new WoodsSaxonNucleus{
