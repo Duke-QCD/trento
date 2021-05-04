@@ -103,7 +103,7 @@ class Event {
      if (std::abs(eta)>eta_max_) return 0.; 
      double u = eta*eta/2./eta_grid_max_;
      return std::exp(-std::pow(u, flatness_))
-           *std::pow(1.-std::pow(eta/eta_max_, 4), 2);
+           *std::pow(1.-std::pow(eta/eta_max_, 4), 4);
   }
   double center_of_mass_eta(double ta, double tb) const{
      return .5*std::log((ta*Pplus_+tb*Pminus_)

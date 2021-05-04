@@ -274,9 +274,14 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
     double mid_power = var_map["mid-power"].as<double>();
     double mid_norm = var_map["mid-norm"].as<double>();
     double var = var_map["fluctuation"].as<double>();
+    double flatness_ = var_map["flatness"].as<double>();
     double norm_trento = mid_norm * Mproton * std::pow(sqrts/Mproton, mid_power);
-    auto f1 = [eta_max,L_](double x){
-        return std::exp(-x*x/2./L_)*std::cosh(x)*std::pow(1.-std::pow(x/eta_max, 4), 2);
+    auto f1 = [eta_max,L_,flatness_](double eta){
+        //return std::exp(-x*x/2./L_)*std::cosh(x)*std::pow(1.-std::pow(x/eta_max, 4), 2);
+        if (std::abs(eta)>eta_max) return 0.; 
+        double u = eta*eta/2./L_;
+        return std::exp(-std::pow(u, flatness_)) * std::cosh(eta)
+             * std::pow(1.-std::pow(eta/eta_max, 4), 4);
     };
     double F1 = norm_trento * trapezoidal(f1, -eta_max, eta_max);
     // Average energy fraction  needed to be depositied from the fragmentation region
@@ -285,9 +290,10 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
         std::cout << "central fireball too large!" << std::endl;
         exit(-1);
     }
-    var = var*(1-avg_xloss_)/avg_xloss_;
-    double a = (1.-avg_xloss_)/var - avg_xloss_;
-    double b = a/avg_xloss_ - a;
+    //std::cout <<  avg_xloss_ << std::endl;
+    double sum = 1./var - 1.;
+    double a = avg_xloss_ * sum;
+    double b = (1. - avg_xloss_) * sum;
     if (a<0 ) {
         std::cout << "Fluctuation too large" << std::endl;
         exit(-1);

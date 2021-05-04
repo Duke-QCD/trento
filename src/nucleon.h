@@ -310,15 +310,14 @@ inline void NucleonCommon::sample_constituent_positions(NucleonData& nucleon) co
   double ycom = 0.0;
 
   // Sample nucleon constituent positions
-  double overall_fluct = constituent_xloss_dist_(random::engine);
+  double overall_fluct = std::pow(constituent_xloss_dist_(random::engine),2);
   for (auto&& constituent : nucleon.constituents_) {
     auto xloc = constituent_position_dist_(random::engine);
     auto yloc = constituent_position_dist_(random::engine);
 
     constituent.x = xloc;
     constituent.y = yloc;
-    double sqrtfraction =  overall_fluct;
-    constituent.frac_mid = sqrtfraction*sqrtfraction;
+    constituent.frac_mid = overall_fluct;
     constituent.frac_forward = 1. - constituent.frac_mid;
 
     xcom += xloc;

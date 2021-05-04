@@ -28,6 +28,7 @@ flatness = {flatness}
 nsteps-etas = {rapgrid}
 """
 
+
 label = 'param-set-1'
 with open(label+".txt",'w') as f:
     f.write(config.format(

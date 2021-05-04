@@ -51,7 +51,7 @@ Event::Event(const VarMap& var_map)
       kT_min_(var_map["kT-min"].as<double>()),
       sqrts_(var_map["sqrts"].as<double>()),
       nucleon_pabs_(std::sqrt(.25*sqrts_*sqrts_ - Mproton*Mproton)),
-      // eta_max_(sqrts, kTmin) is the physically kinetiac range considered
+      // eta_max_(sqrts, kTmin) is the physical range of particle rapidity
       eta_max_( std::asinh(.5*sqrts_/kT_min_) ),  
       // eta_grid_max_(sqrts) is the range of the computing grid
       // it also has a physical meaning though
@@ -205,15 +205,24 @@ void Event::compute_density() {
       double ta = TA_[iy][ix], fa = FA_[iy][ix];
       double tb = TB_[iy][ix], fb = FB_[iy][ix];
       if (ta<TINY && tb<TINY && fa < TINY && fb < TINY) continue;
-      double TR = pmean(0., ta, tb)/xloss_;
+      double TR = pmean(0., ta, tb);
       double etacm = center_of_mass_eta(ta, tb);
       for (int iz = 0; iz < nsteps_etas_; ++iz) {
         double etas = - eta_grid_max_ + (iz+.5) * detas_; 
-        double e_central = (std::abs(etas-etacm)<eta_grid_max_)? 
+        double e_central = (std::abs(etas-etacm)<eta_max_)? 
                 (norm_trento_*TR*central_profile(etas-etacm)) : 0.;
-        double xA = std::min(std::max(std::exp(-eta_max_+etas), TINY),1.);
-        double xB = std::min(std::max(std::exp(-eta_max_-etas), TINY),1.);
-        double e_fb = kT_min_*(ta*frag_profile(xA) + tb*frag_profile(xB));
+        //double xA = std::min(std::max(2*std::sinh(-eta_max_+etas), TINY),1.);
+        //double xB = std::min(std::max(2*std::sinh(-eta_max_-etas), TINY),1.);
+        double dy = etas;//-etacm;
+        double e_fb = 0.;
+        if(dy>0){
+            double x = 2.*std::sinh(dy) / std::exp(eta_grid_max_);
+            e_fb = kT_min_*ta*frag_profile(x);
+        }
+        else{
+            double x = 2.*std::sinh(-dy) / std::exp(eta_grid_max_);
+            e_fb = kT_min_*tb*frag_profile(x);
+        }
         Density_[iz][iy][ix] = e_central + e_fb;
       }
     }
