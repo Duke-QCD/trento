@@ -91,10 +91,11 @@ Event::Event(const VarMap& var_map)
   }
   // Normalziation for the fragmentation region, Nfrag_
   auto f2 = [this](double x){
-      return std::pow(eta_max_-x, this->shape_alpha_)
-            *std::exp(-(eta_max_-x)*(this->shape_beta_+2.));
+      return this->frag_profile(x);
+      //return std::pow(eta_max_-x, this->shape_alpha_)
+      //      *std::exp(-(eta_max_-x)*(this->shape_beta_+2.));
   };
-  Nfrag_ = trapezoidal(f2, -eta_max_, eta_max_);
+  Nfrag_ = trapezoidal(f2, kT_min_/sqrts_, 1.0);
 }
 
 void Event::compute(const Nucleus& nucleusA, 
@@ -212,14 +213,10 @@ void Event::compute_density() {
         double e_central = (std::abs(etas-etacm)<eta_max_)? 
                 (norm_trento_*TR*central_profile(etas-etacm)) : 0.;
         double e_fb = 0.;
-        if(etas>0){
-            double x = 2.*std::sinh(etas) / std::exp(eta_grid_max_);
-            e_fb = kT_min_*ta*frag_profile(x);
-        }
-        else{
-            double x = 2.*std::sinh(-etas) / std::exp(eta_grid_max_);
-            e_fb = kT_min_*tb*frag_profile(x);
-        }
+        double xa = std::exp(-eta_grid_max_ + etas);
+        double xb = std::exp(-eta_grid_max_ - etas);
+        e_fb += kT_min_*fa*frag_profile(std::min(1-1e-8,xa))/Nfrag_;
+        e_fb += kT_min_*fb*frag_profile(std::min(1-1e-8,xb))/Nfrag_;
         Density_[iz][iy][ix] = e_central + e_fb;
       }
     }

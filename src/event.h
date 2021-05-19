@@ -111,7 +111,7 @@ class Event {
   }
   double frag_profile(double x) const{
      return std::pow(-std::log(x), shape_alpha_)
-          * std::pow(x, shape_beta_+1)/Nfrag_;
+          * std::pow(x, shape_beta_+1) * std::exp(-2*kT_min_/sqrts_/x);
   }
 
  private:

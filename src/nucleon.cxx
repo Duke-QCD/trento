@@ -285,7 +285,7 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
     };
     double F1 = norm_trento * trapezoidal(f1, -eta_max, eta_max);
     // Average energy fraction  needed to be depositied from the fragmentation region
-    avg_xloss_ = std::sqrt(F1/sqrts); 
+    avg_xloss_ = F1/sqrts; 
     if (avg_xloss_>1) {
         std::cout << "central fireball too large!" << std::endl;
         exit(-1);
