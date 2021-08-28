@@ -4,9 +4,12 @@
 
 #include "hdf5_utils.h"
 
+#include <algorithm>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
-#include <boost/filesystem.hpp>
+#include <boost/filesystem.hpp>  // include this only after explicitly including the std functionality we need
 
 namespace trento {
 
