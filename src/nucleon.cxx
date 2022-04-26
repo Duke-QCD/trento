@@ -279,7 +279,7 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
     auto f1 = [eta_max,L_,flatness_](double eta){
         //return std::exp(-x*x/2./L_)*std::cosh(x)*std::pow(1.-std::pow(x/eta_max, 4), 2);
         if (std::abs(eta)>eta_max) return 0.; 
-        double u = eta*eta/2./L_;
+        double u = eta*eta/2./(L_-3.0);
         return std::exp(-std::pow(u, flatness_)) * std::cosh(eta)
              * std::pow(1.-std::pow(eta/eta_max, 4), 4);
     };

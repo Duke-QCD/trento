@@ -85,9 +85,11 @@ Event::Event(const VarMap& var_map)
   // Energy fraction of the projectile/target to be deposited in 
   // the central fireball, cannot be larger than one!
   xloss_ = Ncentral/sqrts_; 
+  //std::cout << "xloss = " << xloss_;  
   if (xloss_>1.-TINY) {
-      std::cout << "central fireball too large!" << std::endl;
-      exit(-1);
+      std::cout << "xloss = " << xloss_;
+      std::cout << " central fireball too large!" << std::endl;
+      //exit(-1);
   }
   // Normalziation for the fragmentation region, Nfrag_
   auto f2 = [this](double x){

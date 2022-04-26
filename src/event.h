@@ -101,7 +101,7 @@ class Event {
 
   double central_profile(double eta) const{
      if (std::abs(eta)>eta_max_) return 0.;
-     double u = eta*eta/2./eta_max_;
+     double u = eta*eta/2./(eta_max_-3.0);
      return std::exp(-std::pow(u, flatness_))
            *std::pow(1.-std::pow(eta/eta_max_, 4), 4);
   }

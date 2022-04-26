@@ -19,7 +19,7 @@ endif()
 
 
 # Find and use Boost.
-find_package(Boost 1.71 REQUIRED COMPONENTS filesystem program_options system)
+find_package(Boost 1.72 REQUIRED COMPONENTS filesystem program_options system)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 # Find FFTW for generating Gaussian random field
