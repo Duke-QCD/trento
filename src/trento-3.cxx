@@ -111,6 +111,9 @@ int main(int argc, char* argv[]) {
      po::value<int64_t>()->value_name("INT")->default_value(-1, "auto"),
      "random seed")
     // Nulcear configuration parameters
+    ("form-width",
+     po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
+     "form-factor width of inelastic collisions [fm] (0.35, 1.0)")
     ("nucleon-width,w",
      po::value<double>()->value_name("FLOAT")->default_value(.5, "0.5"),
      "Gaussian nucleon width [fm] (0.35, 1.4)")

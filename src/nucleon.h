@@ -112,6 +112,9 @@ class NucleonCommon {
   /// Fast exponential for calculating the thickness profile.
   const FastExp<double> fast_exp_;
 
+  /// Inelastic form factor width:
+  const double form_width_;
+
   /// Gaussian nucleon width.
   const double nucleon_width_;
 
@@ -135,9 +138,6 @@ class NucleonCommon {
 
   /// Nuclear opacity parameter
   double sigma_partonic_;
-
-  /// Thickness function prefactor = 1/(constituent_number*2*pi*w^2) XXX
-  const double prefactor_;
 
   /// Tracks binary collisions if true
   const bool calc_ncoll_;
@@ -237,7 +237,9 @@ inline double NucleonCommon::thickness(
       t += frac * fast_exp_(-.5*distance_sq/constituent_width_sq_);
   }
 
-  return prefactor_ * t;
+  return math::double_constants::one_div_two_pi
+        /constituent_width_sq_/constituent_number_ 
+        * t;
 }
 
 inline double NucleonCommon::fragmentation(
@@ -251,7 +253,9 @@ inline double NucleonCommon::fragmentation(
       t += frac * fast_exp_(-.5*distance_sq/constituent_width_sq_);
   }
 
-  return prefactor_ * t;
+  return math::double_constants::one_div_two_pi
+        /constituent_width_sq_/constituent_number_ 
+        * t;
 }
 
 inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
@@ -268,13 +272,20 @@ inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
   sample_constituent_positions(A);
   sample_constituent_positions(B);
 
+  
+
+  //*** we will not compute this in a fluctuating proton way
+  // instead, compute it as the standard round proton
+  /*
   auto overlap = 0.;
   for (const auto& qA : A.constituents_) {
     for (const auto& qB : B.constituents_) {
       auto distance_sq = sqr(qA.x - qB.x) + sqr(qA.y - qB.y);
       overlap += std::exp(-.25*distance_sq/constituent_width_sq_);
     }
-  }
+  }*/
+   
+  
 
   // The probability is
   //   P = 1 - exp(...)
@@ -286,9 +297,12 @@ inline bool NucleonCommon::participate(NucleonData& A, NucleonData& B) const {
   //   (1 - P) > (1 - U)
   // or equivalently
   //   (1 - P) < U
-  auto one_minus_prob = std::exp(
+  /*auto one_minus_prob = std::exp(
       -sigma_partonic_ * prefactor_/(2.*constituent_number_) * overlap
-      );
+      ); */
+
+  double overlap = std::exp(-distance_sq/4./form_width_/form_width_);
+  auto one_minus_prob  = std::exp(-sigma_partonic_*overlap/4./M_PI/form_width_/form_width_);
 
   // Sample one random number and decide if this pair participates.
   if (one_minus_prob < random::canonical<double>()) {
@@ -343,6 +357,7 @@ inline void NucleonCommon::set_participant(NucleonData& nucleon) const {
   nucleon.is_participant_ = true;
 }
 
+/*
 class MonteCarloCrossSection {
  public:
   MonteCarloCrossSection(const VarMap& var_map);
@@ -364,7 +379,7 @@ class MonteCarloCrossSection {
   const int n_pass = 10000;
   const double tolerance = 0.001;
 };
-
+*/
 }  // namespace trento
 
 #endif  // NUCLEON_H

@@ -52,14 +52,15 @@ param_type<RealType> gamma_param_unit_mean(RealType alpha = 1.) {
 
 // Return appropriate path to temporary file directory.
 // Used to store cross section parameter \sigma_partonic.
-fs::path get_data_home() {
+/*fs::path get_data_home() {
   const auto data_path = std::getenv("XDG_DATA_HOME");
   if(data_path == nullptr)
     return fs::path{std::getenv("HOME")} / ".local/share";
   return data_path;
-}
+}*/
 
-// fitted sigma_nn_inel within 5 GeV < sqrt{s} < 10^5 GeV [fm^2]
+// fitted sigma_nn_inel to PDG data within 5 GeV < sqrt{s} < 10^5 GeV
+// units: [fm^2]
 double SigmaNN(double sqrts){
     double logsqrts = std::log(sqrts);
     return (0.073491826*logsqrts-.19313457)*logsqrts+3.123737545;
@@ -93,7 +94,8 @@ double calc_sampling_width(const VarMap& var_map) {
 double analytic_partonic_cross_section(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto sigma_nn = SigmaNN(var_map["sqrts"].as<double>());
-  auto width = var_map["nucleon-width"].as<double>();
+  //auto width = var_map["nucleon-width"].as<double>();
+  auto width = var_map["form-width"].as<double>();
 
   // TODO: automatically set from beam energy
   // if (sigma_nn < 0.) {
@@ -143,7 +145,8 @@ double analytic_partonic_cross_section(const VarMap& var_map) {
 
 // Determine cross section parameter for sampling nucleon participants.
 // This Monte Carlo numeric method is used for more than one constituent.
-double numeric_partonic_cross_section(const VarMap& var_map) {
+// Will become obsolete soon
+/*double numeric_partonic_cross_section(const VarMap& var_map) {
   MonteCarloCrossSection mc_cross_section(var_map);
   auto sigma_nn = SigmaNN(var_map["sqrts"].as<double>());
   auto width = var_map["constit-width"].as<double>();
@@ -177,11 +180,12 @@ double numeric_partonic_cross_section(const VarMap& var_map) {
     throw std::domain_error{
       "unable to fit cross section -- nucleon and/or constituent width too small?"};
   }
-}
+}*/
+
 
 // Determine the cross section parameter given the nucleon_width,
 // constituent_width, constituent number, and inelastic cross section.
-double partonic_cross_section(const VarMap& var_map) {
+/*double partonic_cross_section(const VarMap& var_map) {
   // Read parameters from the configuration.
   auto nucleon_width = var_map["nucleon-width"].as<double>();
   auto constituent_width = var_map["constit-width"].as<double>();
@@ -228,10 +232,12 @@ double partonic_cross_section(const VarMap& var_map) {
 
   // Use numeric method to determine sigma_partonic if there is nucleon
   // substructure, otherwise use semi-analytic method.
-  if (constituent_number > 1)
-    sigma_partonic = numeric_partonic_cross_section(var_map);
-  else
-    sigma_partonic = analytic_partonic_cross_section(var_map);
+  // ** We will consider substruture only models the energy depsotion
+  // ** but the Ncoll is still determined by the standard procedure
+  //if (constituent_number > 1)
+  //  sigma_partonic = numeric_partonic_cross_section(var_map);
+  //else
+  sigma_partonic = analytic_partonic_cross_section(var_map);
 
   // Save new cross section parameters to cache
   using std::fixed;
@@ -250,11 +256,12 @@ double partonic_cross_section(const VarMap& var_map) {
 
   return sigma_partonic;
 }
-
+*/
 }  // unnamed namespace
 
 NucleonCommon::NucleonCommon(const VarMap& var_map)
     : fast_exp_(-.5*sqr(max_radius_widths), 0., 1000),
+      form_width_(var_map["form-width"].as<double>()),
       nucleon_width_(var_map["nucleon-width"].as<double>()),
       constituent_width_(var_map["constit-width"].as<double>()),
       constituent_number_(std::size_t(var_map["constit-number"].as<int>())),
@@ -262,8 +269,7 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
       max_impact_sq_(sqr(max_impact_widths*nucleon_width_)),
       constituent_width_sq_(sqr(constituent_width_)),
       constituent_radius_sq_(sqr(max_radius_widths*constituent_width_)),
-      sigma_partonic_(partonic_cross_section(var_map)),
-      prefactor_(math::double_constants::one_div_two_pi/constituent_width_sq_/constituent_number_),
+      sigma_partonic_(analytic_partonic_cross_section(var_map)),
       calc_ncoll_(var_map["ncoll"].as<bool>()),
       constituent_position_dist_(0, sampling_width_),
       rng(var_map["random-seed"].as<int64_t>()){
@@ -301,14 +307,17 @@ NucleonCommon::NucleonCommon(const VarMap& var_map)
     constituent_xloss_dist_ = boost::random::beta_distribution<>(a, b);
 }
 
-MonteCarloCrossSection::MonteCarloCrossSection(const VarMap& var_map)
-  : nucleon_width_(var_map["nucleon-width"].as<double>()),
+/*MonteCarloCrossSection::MonteCarloCrossSection(const VarMap& var_map)
+  : form_width_(var_map["form-width"].as<double>()),
+    nucleon_width_(var_map["nucleon-width"].as<double>()),
     constituent_width_(var_map["constit-width"].as<double>()),
     constituent_number_(std::size_t(var_map["constit-number"].as<int>())),
     sampling_width_(calc_sampling_width(var_map)),
     max_impact_(max_impact_widths*nucleon_width_),
     constituent_width_sq_(sqr(constituent_width_)),
-    prefactor_(math::double_constants::one_div_two_pi/constituent_width_sq_/constituent_number_)
+    prefactor_(math::double_constants::one_div_two_pi
+              /(form_width_*form_width_)
+    )
 {}
 
 double MonteCarloCrossSection::operator() (const double sigma_partonic) const {
@@ -374,6 +383,6 @@ double MonteCarloCrossSection::operator() (const double sigma_partonic) const {
   throw std::out_of_range{
     "Partonic cross section failed to converge \
       -- check nucleon width, constituent width, and constituent number"};
-}
+}*/
 
 }  // namespace trento
