@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.5)
 project(trento VERSION 2.0 LANGUAGES CXX)
 
-# require C++11
-set(CMAKE_CXX_STANDARD 11)
+# require C++14 -- Boost.Math requires C++14
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -16,8 +16,14 @@ if(STATIC)
   set(CMAKE_LINK_SEARCH_START_STATIC TRUE)
 endif()
 
-# Find and use Boost.
-find_package(Boost 1.50 REQUIRED COMPONENTS filesystem program_options system)
+# Find and use Boost -- Note that Boost.System is header only in Boost 1.69+, so we don't look for it.
+# Boost.System’s headers are still available, so #include <boost/system/...> keeps working.
+find_package(Boost REQUIRED)  # just to get Boost_VERSION
+if(Boost_VERSION VERSION_LESS 1.69)
+  find_package(Boost REQUIRED COMPONENTS filesystem program_options system)
+else()
+  find_package(Boost REQUIRED COMPONENTS filesystem program_options)
+endif()
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 # Find the HDF5 C++ library.  The CMake FindHDF5 module does not work reliably,
